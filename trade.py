@@ -8,17 +8,20 @@ import numpy as np
 class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the parent
     # these two periods will refer to how many days the moving average will be calculated.
     # one moving average for a short period and one for a long period.
-    params = (('short_period', 20), ('long_period', 100))
+    params = dict(
+        short_period=20,
+        long_period=100
+    )
 
     def __init__(self):  # constructor for when the SMACrossover class is called.
         # create short simple moving average using short_period and long simple moving average using long_period
         # parameters. The crossover indicator is checking for crossovers between two data lines.
         # + 1 for upward, -1 for downward crossover
-        self.cash_value = [self.broker.get_cash()] * (self.params.long_period - 1)
-        self.account_values = [self.broker.get_value()] * (self.params.long_period - 1)
-        self.sma_short = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.short_period)
-        self.sma_long = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.long_period)
-        self.crossover = bt.indicators.CrossOver(self.sma_short, self.sma_long)
+        self.cash_value = [self.broker.get_cash()] * (self.p.long_period)  # multiply this cash value list by the long period
+        self.account_values = [self.broker.get_value()] * (self.p.long_period)  # multiply this asset value list by the long period
+        self.sma_short = bt.ind.SMA(period=self.p.short_period)  # initialize sma_short as a bt SMA indicator using the short period
+        self.sma_long = bt.ind.SMA(period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
+        self.crossover = bt.ind.CrossOver(self.sma_short, self.sma_long)  # use crossover indicator with sma_short and sma_long
 
     # call next method for each bar/candle in backtest.
     def next(self):
@@ -36,7 +39,7 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
 def main():
     cerebro = bt.Cerebro()
     # create a "Cerebro engine." Used for running backtest, managing data feeds, strategies,
-    # broker simulation, etc.
+    # broker simulation, etc/
 
     # Fetch historical data
     data = yf.download('MRNA', start='2020-01-01', end='2022-01-01')  # collect data from MRNA stock: 2020-01-01 to
