@@ -2,6 +2,7 @@
 import yfinance as yf
 import backtrader as bt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import numpy as np
 
 
@@ -18,23 +19,29 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
         # parameters. The crossover indicator is checking for crossovers between two data lines.
         # + 1 for upward, -1 for downward crossover
         self.position_sizes = [self.position.size] * self.p.long_period
-        self.cash_value = [self.broker.get_cash()] * self.p.long_period  # multiply this cash value list by the long period
-        self.account_values = [self.broker.get_value()] * self.p.long_period  # multiply this asset value list by the long period
-        self.sma_short = bt.ind.SMA(period=self.p.short_period)  # initialize sma_short as a bt SMA indicator using the short period
-        self.sma_long = bt.ind.SMA(period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
-        self.crossover = bt.ind.CrossOver(self.sma_short, self.sma_long)  # use crossover indicator with sma_short and sma_long
+        self.cash_value = [
+                              self.broker.get_cash()] * self.p.long_period  # multiply this cash value list by the long period
+        self.account_values = [
+                                  self.broker.get_value()] * self.p.long_period  # multiply this asset value list by the long period
+        self.sma_short = bt.ind.SMA(
+            period=self.p.short_period)  # initialize sma_short as a bt SMA indicator using the short period
+        self.sma_long = bt.ind.SMA(
+            period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
+        self.crossover = bt.ind.CrossOver(self.sma_short,
+                                          self.sma_long)  # use crossover indicator with sma_short and sma_long
 
     # call next method for each bar/candle in backtest.
     def next(self):
         self.cash_value.append(self.broker.get_cash())  # append the current cash value to the list.
         self.account_values.append(self.broker.get_value())
-        size_to_buy = (self.broker.get_cash() * 0.1) // self.data.close[0]  # take 10% of your cash and then perform floor division by the closing price of the stock.
+        size_to_buy = (self.broker.get_cash() * 0.1) // self.data.close[
+            0]  # take 10% of your cash and then perform floor division by the closing price of the stock.
         if size_to_buy < 1:  # if the size_to_buy value is less than one
             size_to_buy = 1  # buy one
 
-        if self.crossover > 0:  # Golden Cross
+        if self.crossover > 0:  # Golden Cross. Short SMA Crosses over Long SMA
             self.buy(size=size_to_buy)
-        elif self.crossover < 0:  # Death Cross
+        elif self.crossover < 0 < self.position.size:  # Death Cross. Short SMA Crosses under Long SMA
             self.sell()
 
         self.position_sizes.append(self.position.size)
@@ -46,7 +53,7 @@ def main():
     # broker simulation, etc/
 
     # Fetch historical data
-    data = yf.download('MRNA', start='2016-01-01', end='2023-01-01')  # collect data from MRNA at given time range
+    data = yf.download('MRNA', start='2016-01-01', end='2023-09-01')  # collect data from MRNA at given time range
     datafeed = bt.feeds.PandasData(dataname=data)  # convert data into format that cerebro can understand
     cerebro.adddata(datafeed)  # add datafeed to cerebro
 
@@ -76,43 +83,52 @@ def main():
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
 
-    print(len(dates))
-    print(len(cash_value))
-    print(len(account_values))
-    print(len(position_sizes))
-
     # For buy/sell markers
-    buys_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if val > 0]
-    buys_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if val > 0]
-    sells_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if val < 0]
-    sells_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if val < 0]
+    buys_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if
+              val > 0]  # only considers values that are positive. for each one, store corresponding date from the dates list using i. (buy signal)
+    buys_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if
+              val > 0]  # only considers values that are positive. for each one, store corresponding closing price from the dates list using i. (buy signal)
+    sells_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if
+               val < 0]  # only considers values that are negative. for each one, store corresponding date from the dates list using i. (sell signal)
+    sells_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if
+               val < 0]  # only considers values that are negative. for each one, store corresponding closing price from the dates list using i. (sell signal)
 
     # create plotly plot
-    figure_trades = go.Figure()
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.1, subplot_titles=('Trading Data', 'Portfolio Value', 'Position Over Time'))
 
-    # add close prices
-    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price'))
+    # First plot (Trading Data)
+    # Side note: The legend tag is simply to help with te alignment in fig.update_layout.
+    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend1'), row=1, col=1)  # Plot close price on row 1 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='20-day SMA', legend='legend1'), row=1, col=1)  # Plot 20-day SMA on row 1 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='20-day SMA', legend='legend1'), row=1,col=1)  # Plot 100-day SMA on row 1 col 1
+    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Signal', legend='legend1'), row=1, col=1)  # Plot the buys on row 1 col 1
+    fig.add_trace(go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Signal', legend='legend1'), row=1,col=1)  # Plot the sells on row 1 col 1
 
-    # Add SMAs
-    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='20-day SMA'))
-    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='100-day SMA'))
+    # Second Plot (Portfolio Value)
+    fig.add_trace(go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time', legend='legend2'), row=2, col=1)  # plot the cash value on row 2 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time', legend='legend2'), row=2, col=1)  # plot the account values on row 2 col 1
 
-    # Add buy/sell markers
-    figure_trades.add_trace(
-        go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=10), name='Buy Signal'))
-    figure_trades.add_trace(
-        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=10), name='Sell Signal'))
+    # Third Plot (Position over Time)
+    fig.add_trace(go.Scatter(x=dates, y=np.array(position_sizes).tolist(), mode='lines', name='Position Over Time', legend='legend3'), row=3, col=1)  # plot the position over time on row 3 col 1.
 
-    # Add cash over time and account value over time
-    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time'))
-    figure_trades.add_trace(
-        go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value over Time'))
+    # Update xaxis properties
+    fig.update_layout(
+        xaxis=dict(rangeselector=dict(buttons=list([dict(count=1, label="1m", step="month", stepmode="backward",),
+                                                    dict(count=6, label="6m", step="month", stepmode="backward"),
+                                                    dict(count=1, label="YTD", step="year", stepmode="todate"),
+                                                    dict(count=1, label="1y", step="year", stepmode="backward"),
+                                                    dict(step="all")]))),
+        height=2500,
+        template="plotly_dark",
+        legend1={"y": 1},
+        legend2={"y": 0.62},
+        legend3={"y": 0.25},
+        xaxis_rangeselector_font_color='white',
+        xaxis_rangeselector_activecolor='red',
+        xaxis_rangeselector_bgcolor='black',
+    )
 
-    # Add position size over time
-    figure_trades.add_trace(
-        go.Scatter(x=dates, y=np.array(position_sizes).tolist(), mode='lines', name='Position over Time'))
-
-    figure_trades.show()
+    fig.show()
 
 
 if __name__ == '__main__':
