@@ -1,6 +1,8 @@
 # imports
 import yfinance as yf
 import backtrader as bt
+import plotly.graph_objects as go
+import numpy as np
 
 
 class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the parent
@@ -12,12 +14,17 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
         # create short simple moving average using short_period and long simple moving average using long_period
         # parameters. The crossover indicator is checking for crossovers between two data lines.
         # + 1 for upward, -1 for downward crossover
+        self.cash_value = [self.broker.get_cash()] * (self.params.long_period - 1)
+        self.account_values = [self.broker.get_value()] * (self.params.long_period - 1)
         self.sma_short = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.short_period)
         self.sma_long = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.long_period)
         self.crossover = bt.indicators.CrossOver(self.sma_short, self.sma_long)
 
     # call next method for each bar/candle in backtest.
     def next(self):
+        self.cash_value.append(self.broker.get_cash())  # append the current cash value to the list.
+        self.account_values.append(self.broker.get_value())
+
         if self.crossover > 0:  # if short crosses above long. Bullish signal known as "Golden Cross"
             if not self.position:  # if not in the market
                 self.buy()  # buy the stock.
@@ -26,7 +33,7 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
                 self.sell()  # sell the stock.
 
 
-if __name__ == '__main__':
+def main():
     cerebro = bt.Cerebro()
     # create a "Cerebro engine." Used for running backtest, managing data feeds, strategies,
     # broker simulation, etc.
@@ -48,11 +55,51 @@ if __name__ == '__main__':
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    # Run over everything
-    cerebro.run()
+    # run cerebro and store it into strategy.
+    strategy = cerebro.run()[0]
 
     # Print out the final result
     print('Ending Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    # Plot the result
-    cerebro.plot()
+    # extract backtrader data
+    dates = [bt.num2date(x) for x in strategy.data.datetime.array]
+    closes = strategy.data.close.array
+    sma_short = strategy.sma_short.array
+    sma_long = strategy.sma_long.array
+    cash_value = strategy.cash_value
+    account_values = strategy.account_values
+
+    print(len(dates))
+    print(len(cash_value))
+    print(len(account_values))
+
+    # For buy/sell markers
+    buys_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if val > 0]
+    buys_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if val > 0]
+    sells_x = [dates[i] for i, val in enumerate(strategy.crossover.array) if val < 0]
+    sells_y = [closes[i] for i, val in enumerate(strategy.crossover.array) if val < 0]
+
+    # create plotly plot
+    figure_trades = go.Figure()
+
+    # add close prices
+    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price'))
+
+    # Add SMAs
+    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='20-day SMA'))
+    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='100-day SMA'))
+
+    # Add buy/sell markers
+    figure_trades.add_trace(
+        go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=10), name='Buy Signal'))
+    figure_trades.add_trace(
+        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=10), name='Sell Signal'))
+
+    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time'))
+    figure_trades.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value over Time'))
+
+    figure_trades.show()
+
+
+if __name__ == '__main__':
+    main()
