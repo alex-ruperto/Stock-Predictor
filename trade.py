@@ -129,6 +129,7 @@ def main():
     )
 
     fig.show()
+    # fig.write_html("MRNA Stock.html") # this line allows user to download it as an html file
 
 
 if __name__ == '__main__':
