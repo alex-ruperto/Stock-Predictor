@@ -10,8 +10,8 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
     # these two periods will refer to how many days the moving average will be calculated.
     # one moving average for a short period and one for a long period.
     params = dict(
-        short_period=20,
-        long_period=100
+        short_period=50,
+        long_period=200
     )
 
     def __init__(self):  # constructor for when the SMACrossover class is called.
@@ -34,12 +34,15 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
     def next(self):
         self.cash_value.append(self.broker.get_cash())  # append the current cash value to the list.
         self.account_values.append(self.broker.get_value())
-        size_to_buy = (self.broker.get_cash() * 0.1) // self.data.close[
-            0]  # take 10% of your cash and then perform floor division by the closing price of the stock.
+        size_to_buy = (self.broker.get_cash() * 0.1) // self.data.close[0]  # take 10% of your cash and then perform floor division by the closing price of the stock.
         if size_to_buy < 1:  # if the size_to_buy value is less than one
             size_to_buy = 1  # buy one
 
-        if self.crossover > 0:  # Golden Cross. Short SMA Crosses over Long SMA
+        # Add a 3-day window to confirm trend
+        confirmation_days = 3
+
+        if self.crossover > 0 and sum([self.crossover[i] for i in range(-confirmation_days, 0)]) == confirmation_days:  # Golden Cross. Short SMA Crosses over Long SMA
+            # this is a check to see short SMA crossed over.
             self.buy(size=size_to_buy)
         elif self.crossover < 0 < self.position.size:  # Death Cross. Short SMA Crosses under Long SMA
             self.sell()
@@ -53,7 +56,7 @@ def main():
     # broker simulation, etc/
 
     # Fetch historical data
-    data = yf.download('MRNA', start='2016-01-01', end='2023-09-01')  # collect data from MRNA at given time range
+    data = yf.download('MRNA', start='2019-01-01', end='2023-09-01')  # collect data from MRNA at given time range
     datafeed = bt.feeds.PandasData(dataname=data)  # convert data into format that cerebro can understand
     cerebro.adddata(datafeed)  # add datafeed to cerebro
 
@@ -94,30 +97,48 @@ def main():
                val < 0]  # only considers values that are negative. for each one, store corresponding closing price from the dates list using i. (sell signal)
 
     # create plotly plot
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.1, subplot_titles=('Trading Data', 'Portfolio Value', 'Position Over Time'))
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+                        subplot_titles=('Trading Data', 'Portfolio Value', 'Position Over Time'))
 
     # First plot (Trading Data)
     # Side note: The legend tag is simply to help with te alignment in fig.update_layout.
-    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend1'), row=1, col=1)  # Plot close price on row 1 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='20-day SMA', legend='legend1'), row=1, col=1)  # Plot 20-day SMA on row 1 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='20-day SMA', legend='legend1'), row=1,col=1)  # Plot 100-day SMA on row 1 col 1
-    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Signal', legend='legend1'), row=1, col=1)  # Plot the buys on row 1 col 1
-    fig.add_trace(go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Signal', legend='legend1'), row=1,col=1)  # Plot the sells on row 1 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend1'),
+                  row=1, col=1)  # Plot close price on row 1 col 1
+    fig.add_trace(
+        go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='50-day SMA', legend='legend1'), row=1,
+        col=1)  # Plot 20-day SMA on row 1 col 1
+    fig.add_trace(
+        go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='200-day SMA', legend='legend1'), row=1,
+        col=1)  # Plot 100-day SMA on row 1 col 1
+    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Signal',
+                             legend='legend1'), row=1, col=1)  # Plot the buys on row 1 col 1
+    fig.add_trace(
+        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Signal',
+                   legend='legend1'), row=1, col=1)  # Plot the sells on row 1 col 1
 
     # Second Plot (Portfolio Value)
-    fig.add_trace(go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time', legend='legend2'), row=2, col=1)  # plot the cash value on row 2 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time', legend='legend2'), row=2, col=1)  # plot the account values on row 2 col 1
+    fig.add_trace(
+        go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time', legend='legend2'),
+        row=2, col=1)  # plot the cash value on row 2 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time',
+                             legend='legend2'), row=2, col=1)  # plot the account values on row 2 col 1
 
     # Third Plot (Position over Time)
-    fig.add_trace(go.Scatter(x=dates, y=np.array(position_sizes).tolist(), mode='lines', name='Position Over Time', legend='legend3'), row=3, col=1)  # plot the position over time on row 3 col 1.
+    fig.add_trace(go.Scatter(x=dates, y=np.array(position_sizes).tolist(), mode='lines', name='Position Over Time',
+                             legend='legend3'), row=3, col=1)  # plot the position over time on row 3 col 1.
 
     # Update xaxis properties
     fig.update_layout(
-        xaxis=dict(rangeselector=dict(buttons=list([dict(count=1, label="1m", step="month", stepmode="backward",),
+        xaxis=dict(rangeselector=dict(buttons=list([dict(count=1, label="1m", step="month", stepmode="backward", ),
                                                     dict(count=6, label="6m", step="month", stepmode="backward"),
                                                     dict(count=1, label="YTD", step="year", stepmode="todate"),
                                                     dict(count=1, label="1y", step="year", stepmode="backward"),
-                                                    dict(step="all")]))),
+                                                    dict(step="all")])),
+                   showline=True,  # Shows the x-axis line
+                   showgrid=True,  # Shows the x-axis grid
+                   showticklabels=True),  # Shows the x-axis tick labels
+        xaxis2=dict(showline=True, showgrid=True, showticklabels=True),
+        xaxis3=dict(showline=True, showgrid=True, showticklabels=True),
         height=2500,
         template="plotly_dark",
         legend1={"y": 1},
@@ -129,7 +150,7 @@ def main():
     )
 
     fig.show()
-    # fig.write_html("MRNA Stock.html") # this line allows user to download it as an html file
+    # fig.write_html("MRNA Stock.html") # this line allows user to download it as a html file
 
 
 if __name__ == '__main__':
