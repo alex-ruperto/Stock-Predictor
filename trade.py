@@ -68,7 +68,7 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.pending_order = None # reset pending order
 
-        elif self.pending_order == 'sell' and consistent_crossover and self.position > 0: 
+        elif self.pending_order == 'sell' and consistent_crossover and self.position.size > 0: 
             # if the pending_order is a sell, consistent and there are shares in the account, 
             self.sell() # sell
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
