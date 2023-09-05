@@ -28,8 +28,8 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
         self.buy_dates = [] # stores the buy dates
         self.sell_dates = [] # stores the sell dates
         self.pending_order = None # tracks the buy/sell decision
-        self.in_golden_cross = False
-        self.in_death_cross = False
+        self.in_golden_cross = False # boolean to check whether it is in a golden cross or not
+        self.in_death_cross = False # boolean to check whether it is in a death cross or not
 
     # call next method for each bar/candle in backtest.
     def next(self):
@@ -50,7 +50,7 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
             self.pending_order = 'sell'
 
         # Add a variable window to confirm trend
-        confirmation_days = 5 # !!!keep in mind, execution will take an extra day!!!
+        confirmation_days = 10 # !!!keep in mind, execution will take an extra day!!!
         consistent_crossover = all(x == self.crossover[0] for x in self.crossover_history[-confirmation_days:])
         # Check the last confirmation_days - 1 days since we've already added today's value\
         # - in confirmation_days is used to count from the end of the list backwards. confirm each item in
@@ -63,12 +63,13 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
         if size_to_buy < 1:  # if the size_to_buy value is less than one
             size_to_buy = 1  # buy one
 
-        if self.pending_order == 'buy' and consistent_crossover: # if the pending order is a buy, 
+        if self.pending_order == 'buy' and consistent_crossover: # if the pending order is a buy and consistent_crossover
             self.buy(size=size_to_buy) # buy
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.pending_order = None # reset pending order
 
-        elif self.pending_order == 'sell' and consistent_crossover:
+        elif self.pending_order == 'sell' and consistent_crossover and self.position > 0: 
+            # if the pending_order is a sell, consistent and there are shares in the account, 
             self.sell() # sell
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             self.pending_order = None # reset pending order
