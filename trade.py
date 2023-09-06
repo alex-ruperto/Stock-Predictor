@@ -50,7 +50,7 @@ class SMACrossover(bt.Strategy):  # class definition with bt.Strategy as the par
             self.pending_order = 'sell'
 
         # Add a variable window to confirm trend
-        confirmation_days = 10 # !!!keep in mind, execution will take an extra day!!!
+        confirmation_days = 3 # !!!keep in mind, execution will take an extra day!!!
         consistent_crossover = all(x == self.crossover[0] for x in self.crossover_history[-confirmation_days:])
         # Check the last confirmation_days - 1 days since we've already added today's value\
         # - in confirmation_days is used to count from the end of the list backwards. confirm each item in
@@ -86,7 +86,7 @@ def main():
     # broker simulation, etc/
 
     # Fetch historical data
-    data = yf.download('TSLA', start='2019-01-01', end='2023-09-01')  # collect data from MRNA at given time range
+    data = yf.download('MRNA', start='2019-01-01', end='2023-09-01')  # collect data from MRNA at given time range
     datafeed = bt.feeds.PandasData(dataname=data)  # convert data into format that cerebro can understand
     cerebro.adddata(datafeed)  # add datafeed to cerebro
 
