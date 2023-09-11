@@ -1,6 +1,7 @@
 import backtrader as bt
+from BaseStrategy import BaseStrategy
 
-class SMACrossoverStrategy(bt.Strategy):  # class definition with bt.Strategy as the parent
+class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy as the parent
     # these two periods will refer to how many days the moving average will be calculated.
     # one moving average for a short period and one for a long period.
     params = dict(
@@ -24,6 +25,16 @@ class SMACrossoverStrategy(bt.Strategy):  # class definition with bt.Strategy as
         self.pending_order = None # tracks the buy/sell decision
         self.in_golden_cross = False # boolean to check whether it is in a golden cross or not
         self.in_death_cross = False # boolean to check whether it is in a death cross or not
+        super().__init__()
+
+    # Golden Cross. Short SMA Crosses over Long SMA
+    def should_buy(self):
+        return self.sma_short[0] > self.sma_long[0] and not self.in_golden_cross
+    
+    # Death Cross. Short SMA Crosses under Long SMA
+    def should_sell(self):
+        return self.sma_short[0] < self.sma_long[0] and not self.in_death_cross
+
 
     # call next method for each bar/candle in backtest.
     def next(self):
@@ -31,14 +42,13 @@ class SMACrossoverStrategy(bt.Strategy):  # class definition with bt.Strategy as
         self.crossover_history.append(self.crossover[0]) # append self.crossover to the crossover_history list
 
         # update the states
-        # Golden Cross. Short SMA Crosses over Long SMA
-        if self.sma_short[0] > self.sma_long[0] and not self.in_golden_cross: 
+        if self.should_buy(): 
             self.in_golden_cross = True
             self.in_death_cross = False
             self.pending_order = 'buy'
 
-        # Death Cross. Short SMA Crosses under Long SMA
-        elif self.sma_short[0] < self.sma_long[0] and not self.in_death_cross:
+        
+        elif self.should_sell():
             self.in_golden_cross = False
             self.in_death_cross = True
             self.pending_order = 'sell'
@@ -58,7 +68,8 @@ class SMACrossoverStrategy(bt.Strategy):  # class definition with bt.Strategy as
             size_to_buy = 1  # buy one
 
         if self.pending_order == 'buy' and consistent_crossover: # if the pending order is a buy and consistent_crossover
-            self.buy(size=size_to_buy) # buy
+            self.buy(size=size_to_buy) # 
+            self.price = self.data.close[0]
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.pending_order = None # reset pending order
 
@@ -73,3 +84,4 @@ class SMACrossoverStrategy(bt.Strategy):  # class definition with bt.Strategy as
         self.account_values.append(self.broker.get_value()) # append the current account value list
         self.position_sizes.append(self.position.size) # append the current position size to list
         
+        super().next()
