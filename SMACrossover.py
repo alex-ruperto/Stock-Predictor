@@ -38,6 +38,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
 
     # call next method for each bar/candle in backtest.
     def next(self):
+        
         # Add the crossover to the history first
         self.crossover_history.append(self.crossover[0]) # append self.crossover to the crossover_history list
 
@@ -46,7 +47,6 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.in_golden_cross = True
             self.in_death_cross = False
             self.pending_order = 'buy'
-
         
         elif self.should_sell():
             self.in_golden_cross = False
@@ -83,5 +83,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         self.cash_value.append(self.broker.get_cash())  # append the current cash value to the list.
         self.account_values.append(self.broker.get_value()) # append the current account value list
         self.position_sizes.append(self.position.size) # append the current position size to list
-        
+
         super().next()
+        
+   

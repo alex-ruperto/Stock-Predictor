@@ -2,8 +2,13 @@ import backtrader as bt
 
 class BaseStrategy(bt.Strategy): # base strategy class that implements take-profit and stop-loss.
     params = (
-        ('stop_loss', 0.01),  # 10% stop loss
-        ('take_profit', 0.01) # 10% take profit
+        ('stop_loss_1', 0.15),  # 15% stop loss
+        ('take_profit_1', 0.10), # 10% take profit
+        ('stop_loss_2', 0.30), # 30% stop loss 
+        ('take_profit_2', 0.25), # 25% take_profit
+        ('stop_loss_3', 0.50), # 50% stop loss
+        ('take_profit_3', 0.50), # 50% take_profit
+        ('rebalance_days', 126) # number of trading days before performing a rebalance on the portfolio
     )
 
     def __init__(self):
@@ -11,44 +16,46 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.price = None
         self.stop_loss_triggered = False
         self.take_profit_triggered = False
+        self.days_since_rebalance = 0
 
-    def should_buy(self):
-        # placeholder method to be overridden by a child strategy class.
-        return False
-    
-    def should_sell(self):
-        return False
+
+    def rebalance(self):
+        print("Rebalancing portfolio")
+        # TODO 
 
     def next(self):
-        if not self.position: # you have no position in the market. no active trades either.
+        self.days_since_rebalance += 1 # add one to the count
+        
+        if self.days_since_rebalance >= self.p.rebalance_days: # execute rebalance and reset counter variable
+            self.rebalance()
+            self.days_since_rebalance = 0 
+
+        if not self.position or self.order: # you have no position in the market. no active trades either.
             return
         
-        if self.order:
-            return
-        
-        if self.should_buy():
-            self.buy() # should_buy is meant to be overriden by child class.
-            self.price = self.data.close[0]
-        elif self.position and self.should_sell():
-            self.sell() # should_sell is meant to be overriden by child class.
-            self.price = None
-        
-        # if the closing price is below the calculated stop-loss level
-        if self.data.close[0] < (1 - self.p.stop_loss) * self.price:
-            self.stop_loss_triggered = True
+        price_change = (self.data.close[0] - self.price) / self.price # calculate % change in price since purchase
 
-        # if the closing price is above the calculated stop-loss level
-        if self.data.close[0] > (1 + self.p.take_profit) * self.price:
-            self.take_profit_triggered = True
+        # check for when price_change crosses a stop-loss or take-profit tier and sell accordingly.
+        # Tier 1
+        if price_change <= -self.p.stop_loss_1: 
+            self.sell(size = self.position.size * 0.2)
+            print(f"Tier 1 Stop loss triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
+        if price_change >= self.p.take_profit_1:
+            self.buy(size = self.position.size * 0.2)
+            print(f"Tier 1 Take-Profit triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
 
-        if self.stop_loss_triggered:
+        # Tier 2
+        if price_change <= -self.p.stop_loss_2: 
+            self.sell(size = self.position.size * 0.4)
+            print(f"Tier 2 Stop loss triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
+        if price_change >= self.p.take_profit_2:
+            self.buy(size = self.position.size * 0.4)
+            print(f"Tier 2 Take-Profit triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
+
+        # Tier 3
+        if price_change <= -self.p.stop_loss_3: 
             self.close()
-            self.stop_loss_triggered = False # reset variable
-            self.price = None
-        
-        if self.take_profit_triggered:
+            print(f"Tier 3 Stop loss triggered! Selling all positions on {bt.num2date(self.data.datetime[0])}")
+        if price_change >= self.p.take_profit_3:
             self.close()
-            self.take_profit_triggered = False # reset variable
-            self.price = None
-        
-
+            print(f"Tier 3 Take-Profit triggered! Selling all positions on {bt.num2date(self.data.datetime[0])}")
