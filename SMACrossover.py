@@ -20,8 +20,6 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         self.sma_long = bt.ind.SMA(self.data.close, period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
         self.crossover = bt.ind.CrossOver(self.sma_short, self.sma_long)  # use crossover indicator with sma_short and sma_long
         self.crossover_history = [] # record the history of the crossover into a list
-        self.buy_dates = [] # stores the buy dates
-        self.sell_dates = [] # stores the sell dates
         self.pending_order = None # tracks the buy/sell decision
         self.in_golden_cross = False # boolean to check whether it is in a golden cross or not
         self.in_death_cross = False # boolean to check whether it is in a death cross or not
@@ -42,6 +40,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         # Add the crossover to the history first
         self.crossover_history.append(self.crossover[0]) # append self.crossover to the crossover_history list
 
+        
         # update the states
         if self.should_buy(): 
             self.in_golden_cross = True

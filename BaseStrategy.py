@@ -17,7 +17,8 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.stop_loss_triggered = False
         self.take_profit_triggered = False
         self.days_since_rebalance = 0
-
+        self.sell_dates = []
+        self.buy_dates = []
 
     def rebalance(self):
         print("Rebalancing portfolio")
@@ -36,26 +37,41 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         price_change = (self.data.close[0] - self.price) / self.price # calculate % change in price since purchase
 
         # check for when price_change crosses a stop-loss or take-profit tier and sell accordingly.
-        # Tier 1
-        if price_change <= -self.p.stop_loss_1: 
-            self.sell(size = self.position.size * 0.2)
-            print(f"Tier 1 Stop loss triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
-        if price_change >= self.p.take_profit_1:
-            self.buy(size = self.position.size * 0.2)
-            print(f"Tier 1 Take-Profit triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
-
-        # Tier 2
-        if price_change <= -self.p.stop_loss_2: 
-            self.sell(size = self.position.size * 0.4)
-            print(f"Tier 2 Stop loss triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
-        if price_change >= self.p.take_profit_2:
-            self.buy(size = self.position.size * 0.4)
-            print(f"Tier 2 Take-Profit triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
 
         # Tier 3
-        if price_change <= -self.p.stop_loss_3: 
-            self.close()
+        if price_change <= -self.p.stop_loss_3 and self.position.size > 0: 
+            self.close() 
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             print(f"Tier 3 Stop loss triggered! Selling all positions on {bt.num2date(self.data.datetime[0])}")
-        if price_change >= self.p.take_profit_3:
+            return
+        if price_change >= self.p.take_profit_3 and self.position.size > 0:
             self.close()
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             print(f"Tier 3 Take-Profit triggered! Selling all positions on {bt.num2date(self.data.datetime[0])}")
+            return
+        # Tier 2
+        if price_change <= -self.p.stop_loss_2 and self.position.size > 0:  
+            self.sell(size = min(self.position.size * 0.4, self.position.size))
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
+            print(f"Tier 2 Stop loss triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
+            return
+        if price_change >= self.p.take_profit_2 and self.position.size > 0:
+            self.sell(size = min(self.position.size * 0.4, self.position.size))
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
+            print(f"Tier 2 Take-Profit triggered! Selling 40% on {bt.num2date(self.data.datetime[0])}")
+            return
+
+        # Tier 1
+        if price_change <= -self.p.stop_loss_1 and self.position.size > 0: 
+            self.sell(size = min(self.position.size * 0.2, self.position.size))
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
+            print(f"Tier 1 Stop loss triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
+            return
+        if price_change >= self.p.take_profit_1 and self.position.size > 0:
+            self.sell(size = min(self.position.size * 0.2, self.position.size))
+            self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
+            print(f"Tier 1 Take-Profit triggered! Selling 20% on {bt.num2date(self.data.datetime[0])}")
+            return
+
+
+        
