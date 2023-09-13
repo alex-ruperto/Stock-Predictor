@@ -43,6 +43,7 @@ def main():
     cash_value = strategy.cash_value
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
+
     
 
     # For buy/sell markers
