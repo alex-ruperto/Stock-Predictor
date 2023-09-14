@@ -13,9 +13,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         # create short simple moving average using short_period and long simple moving average using long_period
         # parameters. The crossover indicator is checking for crossovers between two data lines.
         # + 1 for upward, -1 for downward crossover
-        self.position_sizes = [self.position.size] * self.p.long_period
-        self.cash_value = [self.broker.get_cash()] * self.p.long_period  # multiply this cash value list by the long period
-        self.account_values = [self.broker.get_value()] * self.p.long_period  # multiply this asset value list by the long period
+        super().__init__()
         self.sma_short = bt.ind.SMA(self.data.close, period=self.p.short_period)  # initialize sma_short as a bt SMA indicator using the short period
         self.sma_long = bt.ind.SMA(self.data.close, period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
         self.crossover = bt.ind.CrossOver(self.sma_short, self.sma_long)  # use crossover indicator with sma_short and sma_long
@@ -23,7 +21,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         self.pending_order = None # tracks the buy/sell decision
         self.in_golden_cross = False # boolean to check whether it is in a golden cross or not
         self.in_death_cross = False # boolean to check whether it is in a death cross or not
-        super().__init__()
+        
 
     # Golden Cross. Short SMA Crosses over Long SMA
     def should_buy(self):
@@ -36,7 +34,8 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
 
     # call next method for each bar/candle in backtest.
     def next(self):
-        
+        super().next()
+
         # Add the crossover to the history first
         self.crossover_history.append(self.crossover[0]) # append self.crossover to the crossover_history list
 
@@ -46,11 +45,13 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.in_golden_cross = True
             self.in_death_cross = False
             self.pending_order = 'buy'
+            print(f'SMACrossoverStrategy - Detected Golden Cross on Date: {bt.num2date(self.data.datetime[0])}')
         
         elif self.should_sell():
             self.in_golden_cross = False
             self.in_death_cross = True
             self.pending_order = 'sell'
+            print(f'SMACrossoverStrategy - Detected Death Cross on Date: {bt.num2date(self.data.datetime[0])}')
 
         # Add a variable window to confirm trend
         confirmation_days = 3 # !!!keep in mind, execution will take an extra day!!!
@@ -71,6 +72,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.price = self.data.close[0]
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.pending_order = None # reset pending order
+            print(f'SMACrossoverStrategy - Date: {bt.num2date(self.data.datetime[0])}, Pending Order: {self.pending_order}, Consistent Crossover: {consistent_crossover}')
 
         elif self.pending_order == 'sell' and consistent_crossover and self.position.size > 0: 
             # if the pending_order is a sell, consistent and there are shares in the account, 
@@ -78,11 +80,8 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.sell(size=positions_to_sell) # sell
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             self.pending_order = None # reset pending order
+            print(f'SMACrossoverStrategy - Date: {bt.num2date(self.data.datetime[0])}, Pending Order: {self.pending_order}, Consistent Crossover: {consistent_crossover}')
 
-        self.cash_value.append(self.broker.get_cash())  # append the current cash value to the list.
-        self.account_values.append(self.broker.get_value()) # append the current account value list
-        self.position_sizes.append(self.position.size) # append the current position size to list
-
-        super().next()
         
-   
+        
+        self.update_lists()

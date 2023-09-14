@@ -14,23 +14,24 @@ def main():
 
     # Fetch historical data
     ticker = 'MRNA'
-    data = yf.download(ticker, start='2019-01-01', end='2023-09-01')  # collect data from MRNA at given time range
-    datafeed = bt.feeds.PandasData(dataname=data)  # convert data into format that cerebro can understand
-    cerebro.adddata(datafeed)  # add datafeed to cerebro
-
+    data = bt.feeds.PandasData(dataname=yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True))
+    cerebro.adddata(data)  # add datafeed to cerebro
+    
     cerebro.addstrategy(SMACrossoverStrategy)  # use SMACrossover strategy for the backtest.
-
     # Set our desired cash start
     cerebro.broker.set_cash(10000.0)
 
-    # Set the commission
+    # Set the commis
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
 
+    # print("Last date in data feed:", data.index[-1])
+    # print("Length of data feed in cerebro:", len(data))
     # Print out the starting conditions
-    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    # print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # run cerebro and store it into strategy.
     strategy = cerebro.run()[0]
+    
 
     # Print out the final result
     print('Ending Portfolio Value: %.2f' % cerebro.broker.getvalue())
@@ -40,11 +41,23 @@ def main():
     closes = strategy.data.close.array
     sma_short = strategy.sma_short.array
     sma_long = strategy.sma_long.array
-    cash_value = strategy.cash_value
+    cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
+    print(len(dates))
+    print(len(cash_values))
+    print(len(account_values))
+    print(len(position_sizes))
+    print(dates[:5], dates[-5:])
+    print(cash_values[:5], cash_values[-5:])
+    print(account_values[:5], account_values[-5:])
+    print(position_sizes[:5], position_sizes[-5:])
 
+    print(np.isnan(cash_values).any())
+    print(np.isnan(account_values).any())
+    print(np.isnan(position_sizes).any())
     
+
 
     # For buy/sell markers
     buys_x = strategy.buy_dates # set buys_x to the buy dates. 
@@ -76,7 +89,7 @@ def main():
 
     # Second Plot (Portfolio Value)
     fig.add_trace(
-        go.Scatter(x=dates, y=np.array(cash_value).tolist(), mode='lines', name='Cash Over Time', legend='legend2'),
+        go.Scatter(x=dates, y=np.array(cash_values).tolist(), mode='lines', name='Cash Over Time', legend='legend2'),
         row=2, col=1)  # plot the cash value on row 2 col 1
     fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time',
                              legend='legend2'), row=2, col=1)  # plot the account values on row 2 col 1
