@@ -48,16 +48,9 @@ def main():
     print(len(cash_values))
     print(len(account_values))
     print(len(position_sizes))
-    print(dates[:5], dates[-5:])
-    print(cash_values[:5], cash_values[-5:])
-    print(account_values[:5], account_values[-5:])
-    print(position_sizes[:5], position_sizes[-5:])
-
     print(np.isnan(cash_values).any())
     print(np.isnan(account_values).any())
     print(np.isnan(position_sizes).any())
-    
-
 
     # For buy/sell markers
     buys_x = strategy.buy_dates # set buys_x to the buy dates. 

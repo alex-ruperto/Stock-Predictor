@@ -14,6 +14,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
         # parameters. The crossover indicator is checking for crossovers between two data lines.
         # + 1 for upward, -1 for downward crossover
         super().__init__()
+        self.initialize_lists(self.p.long_period)
         self.sma_short = bt.ind.SMA(self.data.close, period=self.p.short_period)  # initialize sma_short as a bt SMA indicator using the short period
         self.sma_long = bt.ind.SMA(self.data.close, period=self.p.long_period)  # initialize sma_long as a bt SMA indicator using the long period
         self.crossover = bt.ind.CrossOver(self.sma_short, self.sma_long)  # use crossover indicator with sma_short and sma_long
@@ -38,6 +39,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
 
         # Add the crossover to the history first
         self.crossover_history.append(self.crossover[0]) # append self.crossover to the crossover_history list
+        current_date = bt.num2date(self.data.datetime[0])
 
         
         # update the states
@@ -81,7 +83,10 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             self.pending_order = None # reset pending order
             print(f'SMACrossoverStrategy - Date: {bt.num2date(self.data.datetime[0])}, Pending Order: {self.pending_order}, Consistent Crossover: {consistent_crossover}')
+            
+        self.update_lists()
+
+        
 
         
         
-        self.update_lists()

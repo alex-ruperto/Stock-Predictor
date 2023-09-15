@@ -28,11 +28,15 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         print("Rebalancing portfolio")
         # TODO 
 
-    def update_lists(self): # for the daily changing lists
-        # Update the values at the current index
-        self.position_sizes.append(self.position.size)
-        self.cash_values.append(self.broker.get_cash())
-        self.account_values.append(self.broker.get_value())
+    def initialize_lists(self, multiplier):
+        self.position_sizes = [self.position.size] * multiplier
+        self.cash_values = [self.broker.get_cash()] * multiplier
+        self.account_values = [self.broker.get_value()] * multiplier
+    
+    def update_lists(self):
+        self.cash_values.append(self.broker.get_cash())  # append the current cash value to the list.
+        self.account_values.append(self.broker.get_value()) # append the current account value list
+        self.position_sizes.append(self.position.size) # append the current position size to list
 
     def next(self):
         # print("Processing date:", bt.num2date(self.data.datetime[0]))
@@ -77,5 +81,3 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
             self.sell(size=min(self.position.size * 0.2, self.position.size))
             self.sell_dates.append(bt.num2date(self.data.datetime[0]))
             print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
-
-        self.update_lists()
