@@ -23,10 +23,47 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.stop_loss_triggered = False
         self.take_profit_triggered = False
         self.days_since_rebalance = 0
+        self.just_rebalanced = False
         
     def rebalance(self):
         print("Rebalancing portfolio")
-        # TODO 
+
+        # Calculate total portfolio value
+        total_value = self.broker.get_value()
+
+        # Calculate desired cash
+        desired_cash_value = total_value * 0.5
+
+        # Calculate current cash
+        current_cash_value = self.broker.get_cash()
+
+        # Calculate the difference between desired and current values
+        cash_difference = desired_cash_value - current_cash_value
+
+        # Buy or sell stock to achieve the desired allocation
+        if cash_difference < 0:  # Buy stock
+            size_to_buy = -cash_difference // self.data.close[0]
+            if size_to_buy < 1:
+                size_to_buy = 1
+            self.buy(size=size_to_buy)
+            self.price = self.data.close[0]
+            self.buy_dates.append(bt.num2date(self.data.datetime[0]))
+            print(f"Rebalanced by buying {size_to_buy} shares")
+
+        elif cash_difference < 0:  # Sell stock
+            size_to_sell = abs(cash_difference) // self.data.close[0]
+
+            # Ensure you don't sell more than you own
+            if size_to_sell > self.position.size:
+                size_to_sell = self.position.size
+
+            # Only sell if you have shares to sell
+            if size_to_sell > 0:
+                self.sell(size=size_to_sell)
+                self.sell_dates.append(bt.num2date(self.data.datetime[0]))
+                print(f"Rebalanced by selling {size_to_sell} shares")
+
+
 
     def initialize_lists(self, multiplier):
         self.position_sizes = [self.position.size] * multiplier
@@ -37,47 +74,74 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.cash_values.append(self.broker.get_cash())  # append the current cash value to the list.
         self.account_values.append(self.broker.get_value()) # append the current account value list
         self.position_sizes.append(self.position.size) # append the current position size to list
-
-    def next(self):
-        # print("Processing date:", bt.num2date(self.data.datetime[0]))
-        self.days_since_rebalance += 1 # add one to the count
-        
-        if self.days_since_rebalance >= self.p.rebalance_days: # execute rebalance and reset counter variable
-            self.rebalance()
-            self.days_since_rebalance = 0 
+    
+    def take_profit_and_stop_loss(self):
         
         if self.price is not None:
             price_change = (self.data.close[0] - self.price) / self.price # calculate % change in price since purchase
-
-        if not self.position:
+        if self.position.size == 0:
             return
+        
         # check for when price_change crosses a stop-loss or take-profit tier and sell accordingly.
         # Tier 3
         elif price_change <= -self.p.stop_loss_3 and self.position.size > 0:
             self.close()
             self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
         elif price_change >= self.p.take_profit_3 and self.position.size > 0:
             self.close()
             self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
         
         # Tier 2
         elif price_change <= -self.p.stop_loss_2 and self.position.size > 0:
-            self.sell(size=min(self.position.size * 0.4, self.position.size))
-            self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
+            if self.position.size <= 1 and self.position.size >= 0:
+                self.close()
+            else:
+                # Round the sell order size to the nearest whole number
+                size_to_sell = round(min(self.position.size * 0.4, self.position.size))
+                self.sell(size=size_to_sell)
+                self.sell_dates.append(bt.num2date(self.data.datetime[0]))
         elif price_change >= self.p.take_profit_2 and self.position.size > 0:
-            self.sell(size=min(self.position.size * 0.4, self.position.size))
-            self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
-        
+            if self.position.size == 1 and self.position.size > 0:
+                self.close()
+            else:
+                # Round the sell order size to the nearest whole number
+                size_to_sell = round(min(self.position.size * 0.4, self.position.size))
+                self.sell(size=size_to_sell)
+                self.sell_dates.append(bt.num2date(self.data.datetime[0]))
+
         # Tier 1
         elif price_change <= -self.p.stop_loss_1 and self.position.size > 0:
-            self.sell(size=min(self.position.size * 0.2, self.position.size))
-            self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
+            if self.position.size == 1 and self.position.size >= 0:
+                self.close()
+            else:
+                # Round the sell order size to the nearest whole number
+                size_to_sell = round(min(self.position.size * 0.2, self.position.size))
+                self.sell(size=size_to_sell)
+                self.sell_dates.append(bt.num2date(self.data.datetime[0]))
+
         elif price_change >= self.p.take_profit_1 and self.position.size > 0:
-            self.sell(size=min(self.position.size * 0.2, self.position.size))
-            self.sell_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f'BaseStrategy Sell - Date: {bt.num2date(self.data.datetime[0])}, Price Change: {price_change:.2f}%')
+            if self.position.size == 1 and self.position.size >= 0:
+                self.close()
+            else:
+                # Round the sell order size to the nearest whole number
+                size_to_sell = round(min(self.position.size * 0.2, self.position.size))
+                self.sell(size=size_to_sell)
+                self.sell_dates.append(bt.num2date(self.data.datetime[0]))
+
+            
+
+    def next(self):
+        self.days_since_rebalance += 1 # add one to the count
+        
+        if self.days_since_rebalance >= self.p.rebalance_days: # execute rebalance and reset counter variable
+            self.rebalance()
+            self.days_since_rebalance = 0
+            self.just_rebalanced = True
+        
+        if not self.just_rebalanced:
+            self.take_profit_and_stop_loss()
+        
+        self.just_rebalanced = False
+        
+        
+        

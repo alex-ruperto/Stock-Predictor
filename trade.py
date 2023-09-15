@@ -13,7 +13,7 @@ def main():
     # broker simulation, etc/
 
     # Fetch historical data
-    ticker = 'MRNA'
+    ticker = 'AMC'
     data = bt.feeds.PandasData(dataname=yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True))
     cerebro.adddata(data)  # add datafeed to cerebro
     
@@ -44,13 +44,7 @@ def main():
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
-    print(len(dates))
-    print(len(cash_values))
-    print(len(account_values))
-    print(len(position_sizes))
-    print(np.isnan(cash_values).any())
-    print(np.isnan(account_values).any())
-    print(np.isnan(position_sizes).any())
+
 
     # For buy/sell markers
     buys_x = strategy.buy_dates # set buys_x to the buy dates. 

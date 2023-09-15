@@ -47,14 +47,12 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.in_golden_cross = True
             self.in_death_cross = False
             self.pending_order = 'buy'
-            print(f'SMACrossoverStrategy - Detected Golden Cross on Date: {bt.num2date(self.data.datetime[0])}')
         
         elif self.should_sell():
             self.in_golden_cross = False
             self.in_death_cross = True
             self.pending_order = 'sell'
-            print(f'SMACrossoverStrategy - Detected Death Cross on Date: {bt.num2date(self.data.datetime[0])}')
-
+        
         # Add a variable window to confirm trend
         confirmation_days = 3 # !!!keep in mind, execution will take an extra day!!!
         consistent_crossover = all(x == self.crossover[0] for x in self.crossover_history[-confirmation_days:])
@@ -74,7 +72,7 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.price = self.data.close[0]
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.pending_order = None # reset pending order
-            print(f'SMACrossoverStrategy - Date: {bt.num2date(self.data.datetime[0])}, Pending Order: {self.pending_order}, Consistent Crossover: {consistent_crossover}')
+            
 
         elif self.pending_order == 'sell' and consistent_crossover and self.position.size > 0: 
             # if the pending_order is a sell, consistent and there are shares in the account, 
@@ -82,7 +80,6 @@ class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy 
             self.sell(size=positions_to_sell) # sell
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it sold
             self.pending_order = None # reset pending order
-            print(f'SMACrossoverStrategy - Date: {bt.num2date(self.data.datetime[0])}, Pending Order: {self.pending_order}, Consistent Crossover: {consistent_crossover}')
             
         self.update_lists()
 
