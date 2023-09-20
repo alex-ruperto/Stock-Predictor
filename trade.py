@@ -4,7 +4,8 @@ import backtrader as bt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from SMACrossover import SMACrossoverStrategy
+from SMACrossoverStrategy import SMACrossoverStrategy
+from MLStrategy import MLStrategy
 
 
 def main():
@@ -13,11 +14,11 @@ def main():
     # broker simulation, etc/
 
     # Fetch historical data
-    ticker = 'AMC'
+    ticker = 'MRNA'
     data = bt.feeds.PandasData(dataname=yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True))
     cerebro.adddata(data)  # add datafeed to cerebro
     
-    cerebro.addstrategy(SMACrossoverStrategy)  # use SMACrossover strategy for the backtest.
+    cerebro.addstrategy(MLStrategy)  # use SMACrossover strategy for the backtest.
     # Set our desired cash start
     cerebro.broker.set_cash(10000.0)
 
@@ -39,8 +40,8 @@ def main():
     # extract backtrader data
     dates = [bt.num2date(x) for x in strategy.data.datetime.array]
     closes = strategy.data.close.array
-    sma_short = strategy.sma_short.array
-    sma_long = strategy.sma_long.array
+    sma_short = strategy.sma1.array
+    sma_long = strategy.sma2.array
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
