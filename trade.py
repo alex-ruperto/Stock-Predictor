@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from SMACrossoverStrategy import SMACrossoverStrategy
 from MLStrategy import MLStrategy
+import pandas as pd
 
 
 def main():
@@ -111,6 +112,36 @@ def main():
     fig.show()
     # fig.write_html("MRNA Stock.html") # this line allows user to download it as a html file
 
+def preprocess_data(df):
+    df['SMA1'] = df['Close'].rolling(window=50).mean()
+    df['SMA2'] = df['Close'].rolling(window=200).mean()
+    df['RSI'] = rsi_formula(df['Close'], window=14)
+    df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12, long_window=26, signal_window=9)
+    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
+
+def rsi_formula(data, window):
+    """Compute the RSI for a given data series."""
+    delta = data.diff()
+    gain = (delta.where(delta > 0, 0)).fillna(0)
+    loss = (-delta.where(delta < 0, 0)).fillna(0)
+
+    avg_gain = gain.rolling(window=window).mean()
+    avg_loss = loss.rolling(window=window).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    return rsi
+
+def macd_formula(data, short_window, long_window, signal_window):
+    """Compute the MACD for a given data series."""
+    short_ema = data.ewm(span=short_window, adjust=False).mean()
+    long_ema = data.ewm(span=long_window, adjust=False).mean()
+
+    macd_line = short_ema - long_ema
+    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
+    
+    return macd_line, signal_line
 
 if __name__ == '__main__':
     main()
