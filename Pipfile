@@ -8,6 +8,7 @@ yfinance = "*"
 backtrader = "*"
 plotly = "*"
 numpy = "*"
+sklearn = "*"
 
 [dev-packages]
 

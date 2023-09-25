@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from SMACrossoverStrategy import SMACrossoverStrategy
 from MLStrategy import MLStrategy
+from ml_models import train_model
 import pandas as pd
 
 
@@ -16,12 +17,17 @@ def main():
 
     # Fetch historical data
     ticker = 'MRNA'
-    data = bt.feeds.PandasData(dataname=yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True))
+    raw_data = yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True)
+
+    df = preprocess_data(raw_data) # df stands for dataframe
+    clf = train_model(df) # train ML model based on df
+    data = bt.feeds.PandasData(dataname=df)
+
     cerebro.adddata(data)  # add datafeed to cerebro
-    
-    cerebro.addstrategy(MLStrategy)  # use SMACrossover strategy for the backtest.
+    cerebro.addstrategy(MLStrategy, model=clf)  # use SMACrossover strategy for the backtest.
     # Set our desired cash start
     cerebro.broker.set_cash(10000.0)
+    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Set the commis
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
@@ -115,19 +121,18 @@ def main():
 def preprocess_data(df):
     df['SMA1'] = df['Close'].rolling(window=50).mean()
     df['SMA2'] = df['Close'].rolling(window=200).mean()
+    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
     df['RSI'] = rsi_formula(df['Close'], window=14)
     df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12, long_window=26, signal_window=9)
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
+    return df
 
 def rsi_formula(data, window):
     """Compute the RSI for a given data series."""
     delta = data.diff()
     gain = (delta.where(delta > 0, 0)).fillna(0)
     loss = (-delta.where(delta < 0, 0)).fillna(0)
-
     avg_gain = gain.rolling(window=window).mean()
     avg_loss = loss.rolling(window=window).mean()
-
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     
