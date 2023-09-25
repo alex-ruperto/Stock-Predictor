@@ -11,15 +11,15 @@ class MLStrategy (BaseStrategy):
         super().__init__()
         self.initialize_lists(200)
         # Simple Moving Average
-        self.sma1 = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
-        self.sma2 = bt.indicators.SimpleMovingAverage(self.data.close, period=200)
+        self.sma_short = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
+        self.sma_long = bt.indicators.SimpleMovingAverage(self.data.close, period=200)
         # RSI
         self.rsi = bt.indicators.RelativeStrengthIndex(period=14)
         # MACD
         self.macd = bt.indicators.MACD(self.data.close, period_me1=12, period_me2=26, period_signal=9)
         
     def next(self):
-        current_data = [self.sma1[0], self.sma2[0], self.rsi[0], self.macd.macd[0], self.macd.signal[0]]
+        current_data = [self.sma_short[0], self.sma_long[0], self.rsi[0], self.macd.macd[0], self.macd.signal[0]]
         prediction = None
         if self.params.model is not None:
             df = pd.DataFrame([current_data], columns=['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line'])

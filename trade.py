@@ -52,8 +52,10 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     # extract backtrader data
     dates = [bt.num2date(x) for x in strategy.data.datetime.array]
     closes = strategy.data.close.array
-    sma_short = strategy.sma1.array
-    sma_long = strategy.sma2.array
+    sma_short = strategy.sma_short.array
+    sma_long = strategy.sma_long.array
+    rsi = strategy.rsi.array
+    macd = strategy.macd.array
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
@@ -67,8 +69,8 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     sells_y = [closes[dates.index(date)] for date in sells_x if date in dates]
 
     # create plotly plot
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.1,
-                        subplot_titles=(f'Trading Data for {ticker}', 'Portfolio Value', 'Position Over Time'))
+    fig = make_subplots(rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+                        subplot_titles=(f'Trading Data for {ticker}','RSI', 'MACD' 'Portfolio Value', 'Position Over Time'))
 
     # First plot (Trading Data)
     # Side note: The legend tag is simply to help with te alignment in fig.update_layout.
@@ -85,17 +87,38 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     fig.add_trace(
         go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
                    legend='legend1'), row=1, col=1)  # Plot the sells on row 1 col 1
-
-    # Second Plot (Portfolio Value)
+    # Second Plot (RSI)
+    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend2'),
+                  row=2, col=1)  # Plot close price on row 2 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(rsi).tolist(), mode='lines', name='RSI', legend='legend2'),
+                  row=2, col=1)  # Plot close price on row 2 col 1
+    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
+                             legend='legend2'), row=2, col=1)  # Plot the buys on row 2 col 1
     fig.add_trace(
-        go.Scatter(x=dates, y=np.array(cash_values).tolist(), mode='lines', name='Cash Over Time', legend='legend2'),
-        row=2, col=1)  # plot the cash value on row 2 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time',
-                             legend='legend2'), row=2, col=1)  # plot the account values on row 2 col 1
+        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
+                   legend='legend2'), row=2, col=1)  # Plot the sells on row 2 col 1
+    
+    # Third Plot (MACD)
+    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend3'),
+                  row=3, col=1)  # Plot close price on row 3 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(macd).tolist(), mode='lines', name='MACD', legend='legend3'),
+                  row=3, col=1)  # Plot close price on row 3 col 1
+    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
+                             legend='legend3'), row=3, col=1)  # Plot the buys on row 3 col 1
+    fig.add_trace(
+        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
+                   legend='legend3'), row=3, col=1)  # Plot the sells on row 2 col 1
 
-    # Third Plot (Position over Time)
+    # Fourth Plot (Portfolio Value)
+    fig.add_trace(
+        go.Scatter(x=dates, y=np.array(cash_values).tolist(), mode='lines', name='Cash Over Time', legend='legend4'),
+        row=4, col=1)  # plot the cash value on row 4 col 1
+    fig.add_trace(go.Scatter(x=dates, y=np.array(account_values).tolist(), mode='lines', name='Account Value Over Time',
+                             legend='legend4'), row=4, col=1)  # plot the account values on row 4 col 1
+
+    # Fifth Plot (Position over Time)
     fig.add_trace(go.Scatter(x=dates, y=np.array(position_sizes).tolist(), mode='lines', name='Position Over Time',
-                             legend='legend3'), row=3, col=1)  # plot the position over time on row 3 col 1.
+                             legend='legend5'), row=5, col=1)  # plot the position over time on row 5 col 1.
 
     # Update xaxis properties
     fig.update_layout(
@@ -112,8 +135,10 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
         height=2500,
         template="plotly_dark",
         legend1={"y": 1},
-        legend2={"y": 0.62},
-        legend3={"y": 0.25},
+        legend2={"y": 0.77},
+        legend3={"y": 0.56},
+        legend4={"y": 0.33},
+        legend5={"y": 0.10},
         xaxis_rangeselector_font_color='white',
         xaxis_rangeselector_activecolor='red',
         xaxis_rangeselector_bgcolor='black',
