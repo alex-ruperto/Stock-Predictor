@@ -1,5 +1,6 @@
 import backtrader as bt
 from BaseStrategy import BaseStrategy
+import pandas as pd
 
 class MLStrategy (BaseStrategy):
     params = [
@@ -21,7 +22,8 @@ class MLStrategy (BaseStrategy):
         current_data = [self.sma1[0], self.sma2[0], self.rsi[0], self.macd.macd[0], self.macd.signal[0]]
         prediction = None
         if self.params.model is not None:
-            prediction = self.params.model.predict([current_data])[0]
+            df = pd.DataFrame([current_data], columns=['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line'])
+            prediction = self.params.model.predict(df)[0]
         
         if prediction == 1:  # If the model predicts the stock will go up.
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought

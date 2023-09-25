@@ -4,19 +4,30 @@ import backtrader as bt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from SMACrossoverStrategy import SMACrossoverStrategy
+import dash
+from dash import dcc
+from dash import html
+from dash.dependencies import Input, Output
 from MLStrategy import MLStrategy
 from ml_models import train_model
 import pandas as pd
+from ml_models import preprocess_data
 
 
-def main():
+TICKERS = ['AAPL', 'MSFT', 'GOOG', 'NVDA','MRNA']
+app = dash.Dash(__name__)
+
+
+def generate_figures_for_tickers(tickers):
+    figures = {}
+    for ticker in tickers:
+        fig = generate_figure_for_ticker(ticker)
+        figures[ticker] = fig
+    return figures
+
+def generate_figure_for_ticker(ticker): # function to backtest and plot individual ticker based on strategy
+     # Fetch historical data
     cerebro = bt.Cerebro()
-    # create a "Cerebro engine." Used for running backtest, managing data feeds, strategies,
-    # broker simulation, etc/
-
-    # Fetch historical data
-    ticker = 'MRNA'
     raw_data = yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True)
 
     df = preprocess_data(raw_data) # df stands for dataframe
@@ -28,19 +39,13 @@ def main():
     # Set our desired cash start
     cerebro.broker.set_cash(10000.0)
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print(f'Running backtest on: {ticker}.')
 
-    # Set the commis
+    # Set the commision
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
-
-    # print("Last date in data feed:", data.index[-1])
-    # print("Length of data feed in cerebro:", len(data))
-    # Print out the starting conditions
-    # print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # run cerebro and store it into strategy.
     strategy = cerebro.run()[0]
-    
-
     # Print out the final result
     print('Ending Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
@@ -52,7 +57,6 @@ def main():
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
-
 
     # For buy/sell markers
     buys_x = strategy.buy_dates # set buys_x to the buy dates. 
@@ -115,38 +119,26 @@ def main():
         xaxis_rangeselector_bgcolor='black',
     )
 
-    fig.show()
-    # fig.write_html("MRNA Stock.html") # this line allows user to download it as a html file
+    return fig
 
-def preprocess_data(df):
-    df['SMA1'] = df['Close'].rolling(window=50).mean()
-    df['SMA2'] = df['Close'].rolling(window=200).mean()
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
-    df['RSI'] = rsi_formula(df['Close'], window=14)
-    df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12, long_window=26, signal_window=9)
-    return df
+app.layout=html.Div([
+    dcc.Dropdown(
+        id='ticker-dropdown',
+        options=[{'label': ticker, 'value': ticker} for ticker in TICKERS],
+        value=TICKERS[0] # default
+    ),
+    dcc.Graph(id='stock-graph')
+])
 
-def rsi_formula(data, window):
-    """Compute the RSI for a given data series."""
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).fillna(0)
-    loss = (-delta.where(delta < 0, 0)).fillna(0)
-    avg_gain = gain.rolling(window=window).mean()
-    avg_loss = loss.rolling(window=window).mean()
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    
-    return rsi
+# update the graph based on the dropdown on selection
+@app.callback(
+        Output('stock-graph', 'figure'), # update the figure property of the component ID stock-graph
+        [Input('ticker-dropdown', 'value')] # input to this function is the value property of ticker-dropdown
+)
 
-def macd_formula(data, short_window, long_window, signal_window):
-    """Compute the MACD for a given data series."""
-    short_ema = data.ewm(span=short_window, adjust=False).mean()
-    long_ema = data.ewm(span=long_window, adjust=False).mean()
-
-    macd_line = short_ema - long_ema
-    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
-    
-    return macd_line, signal_line
+def update_graph(selected_ticker):
+    return figures[selected_ticker]
 
 if __name__ == '__main__':
-    main()
+    figures = generate_figures_for_tickers(TICKERS)
+    app.run_server(debug=True)

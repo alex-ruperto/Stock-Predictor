@@ -9,6 +9,7 @@ backtrader = "*"
 plotly = "*"
 numpy = "*"
 sklearn = "*"
+dash = "*"
 
 [dev-packages]
 
