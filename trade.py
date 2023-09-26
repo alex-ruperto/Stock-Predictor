@@ -14,7 +14,7 @@ import pandas as pd
 from ml_models import preprocess_data
 
 
-TICKERS = ['AAPL', 'MSFT', 'GOOG', 'NVDA','MRNA']
+TICKERS = ['NVDA', 'GOOG', 'AAPL', 'TSLA', 'MSFT']
 app = dash.Dash(__name__)
 
 
@@ -28,6 +28,7 @@ def generate_figures_for_tickers(tickers):
 def generate_figure_for_ticker(ticker): # function to backtest and plot individual ticker based on strategy
      # Fetch historical data
     cerebro = bt.Cerebro()
+    print(f'Downloading data for: {ticker}.')
     raw_data = yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True)
 
     df = preprocess_data(raw_data) # df stands for dataframe
@@ -47,7 +48,7 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     # run cerebro and store it into strategy.
     strategy = cerebro.run()[0]
     # Print out the final result
-    print('Ending Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
 
     # extract backtrader data
     dates = [bt.num2date(x) for x in strategy.data.datetime.array]
@@ -70,7 +71,7 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
 
     # create plotly plot
     fig = make_subplots(rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.1,
-                        subplot_titles=(f'Trading Data for {ticker}','RSI', 'MACD' 'Portfolio Value', 'Position Over Time'))
+                        subplot_titles=(f'Trading Data for {ticker}','RSI', 'MACD', 'Portfolio Value', 'Position Over Time'))
 
     # First plot (Trading Data)
     # Side note: The legend tag is simply to help with te alignment in fig.update_layout.
@@ -166,4 +167,4 @@ def update_graph(selected_ticker):
 
 if __name__ == '__main__':
     figures = generate_figures_for_tickers(TICKERS)
-    app.run_server(debug=True)
+    app.run_server(debug=True, use_reloader=False)

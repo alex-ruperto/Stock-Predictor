@@ -2,6 +2,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GridSearchCV
 
 # df stands for dataframe. dataframe is a data structure that is 2D like a spreadsheet.
 def train_model(df): # pandas dataframe expected
@@ -19,17 +20,41 @@ def train_model(df): # pandas dataframe expected
     # 20 % of data for testing (X_test, y_test)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
+    # Parameter grid to search
+    parameter_grid = {
+        'n_estimators': [10, 50, 200], # this is the number of trees in the forest
+        'max_depth':[None, 10, 20], # Maximum depth of each tree
+        'min_samples_split':[2, 5], # minimum number of samples to split an node. if samples < this, become leaf node
+        'min_samples_leaf':[1, 2], # minimum number of samples required to be at a leaf node
+        'max_features':['sqrt'] # determines maximum number of features considered
+    }
+    # number of candidates = multiplication of the size of each hyperparameter. 
+    # number of fits (model training runs) = number of candidates * number of folds (cv)
+
     # Train model
     # Explanation of this here: https://builtin.com/data-science/random-forest-python-deep-dive
     clf = RandomForestClassifier()
-    clf.fit(X_train, y_train)
 
-    y_prediction = clf.predict(X_test)
+    grid_search = GridSearchCV(estimator=clf, param_grid=parameter_grid, cv=3, 
+                               n_jobs=-1, verbose=1, scoring='accuracy', error_score='raise')
+    # cv is how many partitions the data should be split into. train on 2, validate on 3.
+    # n_jobs=-1 means all available processors will be used
+    # verbose=1 function will print detailed info on progress of the grid search.
+    # scoring=accuracy model with the highest accuracy on the validation set will be considered the best.
+
+    grid_search.fit(X_train, y_train)
+    # get best parameters
+    best_parameters = grid_search.best_params_
+
+    # train the model using the best parameters
+    best_clf = grid_search.best_estimator_
+
+    y_prediction = best_clf.predict(X_test)
     accuracy = accuracy_score(y_test, y_prediction)
     
-    print(f"Model Accuracy on Test Set: {accuracy:.2f}")
+    print(f"Model Accuracy on Test Set with best parameters: {accuracy:.2f}")
     
-    return clf
+    return best_clf
 
 def preprocess_data(df):
     df['SMA1'] = df['Close'].rolling(window=50).mean()
