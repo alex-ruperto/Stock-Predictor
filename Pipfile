@@ -11,6 +11,8 @@ numpy = "*"
 sklearn = "*"
 dash = "*"
 scikit-learn = "*"
+tensorflow = "*"
+keras = "*"
 
 [dev-packages]
 

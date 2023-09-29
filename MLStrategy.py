@@ -14,8 +14,10 @@ class MLStrategy (BaseStrategy):
         # Simple Moving Average
         self.sma_short = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
         self.sma_long = bt.indicators.SimpleMovingAverage(self.data.close, period=200)
+
         # RSI
         self.rsi = bt.indicators.RelativeStrengthIndex(period=14)
+        
         # MACD
         self.macd = bt.indicators.MACD(self.data.close, period_me1=12, period_me2=26, period_signal=9)
         
@@ -47,7 +49,3 @@ class MLStrategy (BaseStrategy):
             self.sell()
         
         self.update_lists()
-
-
-
-

@@ -1,63 +1,49 @@
-from sklearn.ensemble import RandomForestClassifier
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import GridSearchCV
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+
 
 # df stands for dataframe. dataframe is a data structure that is 2D like a spreadsheet.
-def train_model(df): # pandas dataframe expected
+def train_model(df):
     # handle missing values using mean imputation
     imputer = SimpleImputer(strategy='mean')
     df_imputed = df.copy()
-    df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
-                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 
-                'D_Line']] = imputer.fit_transform(df[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
-                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']])
+    df_imputed = pd.DataFrame(imputer.fit_transform(df_imputed), columns=df.columns)
+
+    # Normalize Data
+    scaler = MinMaxScaler(feature_range = (0,1))
+    scaled_data = scaler.fit_transform(df_imputed.values)
+
+    # create sequences
+    X, y = [], []
+    time_step = 60
+    for i in range(len(scaled_data) - time_step):
+        X.append(scaled_data[i:i+time_step])
+        y.append(scaled_data[i+ time_step, df.columns.get_loc('Target')])
     
-    # split data into training and test sets:
-    X = df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']]
-    y = df_imputed['Target']
+    X,y = np.array(X), np.array(y)
 
-
-    # 80% of data for training, X_train, y_train
-    # 20 % of data for testing (X_test, y_test)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-    # Parameter grid to search
-    parameter_grid = {
-        'n_estimators': [10, 50, 200], # this is the number of trees in the forest
-        'max_depth':[None, 10, 20], # Maximum depth of each tree
-        'min_samples_split':[2, 5], # minimum number of samples to split an node. if samples < this, become leaf node
-        'min_samples_leaf':[1, 2], # minimum number of samples required to be at a leaf node
-        'max_features':[None] # determines maximum number of features considered
-    }
-    # number of candidates = multiplication of the size of each hyperparameter. 
-    # number of fits (model training runs) = number of candidates * number of folds (cv)
+    # Split data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     # Train model
-    # Explanation of this here: https://builtin.com/data-science/random-forest-python-deep-dive
-    clf = RandomForestClassifier()
+    model = Sequential()
+    model.add(LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
+    model.add(LSTM(50, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
 
-    grid_search = GridSearchCV(estimator=clf, param_grid=parameter_grid, cv=3, 
-                               n_jobs=-1, verbose=1, scoring='accuracy', error_score='raise')
-    # cv is how many partitions the data should be split into. train on 2, validate on 3.
-    # n_jobs=-1 means all available processors will be used
-    # verbose=1 function will print detailed info on progress of the grid search.
-    # scoring=accuracy model with the highest accuracy on the validation set will be considered the best.
-
-    grid_search.fit(X_train, y_train)
-    # get best parameters
-    best_parameters = grid_search.best_params_
-
-    # train the model using the best parameters
-    best_clf = grid_search.best_estimator_
-
-    y_prediction = best_clf.predict(X_test)
-    accuracy = accuracy_score(y_test, y_prediction)
+    # compile model
+    model.compile(optimizer = 'adam', loss = 'mean_squared_error')
     
-    print(f"Model Accuracy on Test Set with best parameters: {accuracy:.2f}")
-    
-    return best_clf
+    # Train the model
+    model.fit(X_train, y_train, batch_size=32, epochs=50, validation_data=(X_test, y_test))
+
+    return model
 
 # features
 def preprocess_data(df):
