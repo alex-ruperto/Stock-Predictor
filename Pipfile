@@ -10,6 +10,7 @@ plotly = "*"
 numpy = "*"
 sklearn = "*"
 dash = "*"
+scikit-learn = "*"
 
 [dev-packages]
 
