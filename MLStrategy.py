@@ -43,17 +43,17 @@ class MLStrategy (BaseStrategy):
         
         self.rolling_window.append(current_data)
 
-        prediction = -1 # no prediction/netural prediction
+        prediction = None
 
         if len(self.rolling_window) == 60:
             df = pd.DataFrame(self.rolling_window, columns=['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line'])
             prediction = self.params.model.predict(df.values.reshape(1, 60, len(df.columns)))[0][0]
             print("Prediction:", prediction)
         
-        if prediction > 0.5:  # If the model predicts the stock will go up. 0.5 or higher is
+        if prediction is not None and prediction > 0.5:  # If the model predicts the stock will go up. 0.5 or higher is
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.buy()
-        elif self.position.size > 0: 
+        elif self.position.size > 0 and prediction < 0.5 and prediction is not None: 
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.sell()
         
