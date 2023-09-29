@@ -13,6 +13,7 @@ dash = "*"
 scikit-learn = "*"
 tensorflow = "*"
 keras = "*"
+pandas = "*"
 
 [dev-packages]
 

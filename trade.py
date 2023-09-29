@@ -14,7 +14,7 @@ import pandas as pd
 from ml_models import preprocess_data
 
 
-TICKERS = ['NVDA', 'GOOG', 'AAPL', 'TSLA', 'MSFT']
+TICKERS = ['NVDA']
 app = dash.Dash(__name__)
 
 
