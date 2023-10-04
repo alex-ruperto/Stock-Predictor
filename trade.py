@@ -9,6 +9,7 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
 from MLStrategy import MLStrategy
+from Investment import WeeklyCapitalInjectionAnalyzer
 from ml_models import train_model
 import pandas as pd
 from ml_models import preprocess_data
@@ -39,12 +40,13 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     cerebro.adddata(data)  # add datafeed to cerebro
     cerebro.addstrategy(MLStrategy, model=clf)  # use SMACrossover strategy for the backtest.
     # Set our desired cash start
-    cerebro.broker.set_cash(10000.0)
+    cerebro.broker.set_cash(100.0)
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     print(f'Running backtest on: {ticker}.')
 
     # Set the commision
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
+    cerebro.addanalyzer(WeeklyCapitalInjectionAnalyzer, _name="weekly_injection")
 
     # run cerebro and store it into strategy.
     strategy = cerebro.run()[0]
