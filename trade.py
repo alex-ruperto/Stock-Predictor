@@ -14,6 +14,7 @@ import pandas as pd
 from ml_models import preprocess_data
 
 
+
 TICKERS = ['NVDA']
 app = dash.Dash(__name__)
 

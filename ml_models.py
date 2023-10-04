@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+from keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split  # Add this import
 from sklearn.impute import SimpleImputer  # Add this import
+
 
 # features
 def preprocess_data(df):
@@ -87,8 +89,11 @@ def train_model(df):
     
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
+    # Define early stopping to monitor performance during training and stopping when performance degrades. Prevents continuous learning of noise.
+    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
     # Train model
-    model.fit(X_train_reshaped, y_train_reshaped, epochs=30, validation_data=(X_test_reshaped, y_test_reshaped))
+    model.fit(X_train_reshaped, y_train_reshaped, epochs=15, validation_data=(X_test_reshaped, y_test_reshaped), callbacks=[early_stopping])
 
     # Predictions
     y_pred = model.predict(X_test_reshaped)
