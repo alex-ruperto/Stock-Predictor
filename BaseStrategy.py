@@ -1,4 +1,5 @@
 import backtrader as bt
+from Investment import WeeklyCapitalInjectionAnalyzer
 
 class BaseStrategy(bt.Strategy): # base strategy class that implements take-profit and stop-loss.
     params = (
@@ -8,7 +9,8 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         ('take_profit_2', 0.25), # 25% take_profit
         ('stop_loss_3', 0.50), # 50% stop loss
         ('take_profit_3', 0.50), # 50% take_profit
-        ('rebalance_days', 126) # number of trading days before performing a rebalance on the portfolio
+        ('rebalance_days', 126), # number of trading days before performing a rebalance on the portfolio
+        ('weekly_cash_injection', 100.0) # amount of cash to inject
     )
 
     def __init__(self):
@@ -24,7 +26,13 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.take_profit_triggered = False
         self.days_since_rebalance = 0
         self.just_rebalanced = False
-        
+        self.last_injection_date = self.data.datetime.datetime(0)
+    
+    def add_cash(self, amount):
+        #  Add cash to the broker's account balance.
+        self.broker.add_cash(amount)
+        print(f"Added ${amount:.2f} to cash balance on {self.data.datetime[0]}")
+
     def rebalance(self):
         print("Rebalancing portfolio")
 
@@ -131,6 +139,15 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
             
 
     def next(self):
+        current_date = self.data.datetime.datetime()
+        
+        # Calculate the number of days since the last injection
+        days_since_injection = (current_date - self.last_injection_date).days
+        
+        if days_since_injection >= 7:  # Check if a week has passed
+            self.add_cash(self.params.weekly_cash_injection)
+            self.last_injection_date = current_date
+
         self.days_since_rebalance += 1 # add one to the count
         
         if self.days_since_rebalance >= self.p.rebalance_days: # execute rebalance and reset counter variable
