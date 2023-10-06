@@ -12,13 +12,10 @@ from MLStrategy import MLStrategy
 from ml_models import train_model
 import pandas as pd
 from ml_models import preprocess_data
-from Investment import WeeklyCapitalInjectionAnalyzer
-from datetime import timedelta
-import datetime
 
-
-TICKERS = ['NVDA']
+TICKERS = ['VOO']
 app = dash.Dash(__name__)
+
 
 def generate_figures_for_tickers(tickers):
     figures = {}
@@ -32,15 +29,14 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     cerebro = bt.Cerebro()
     print(f'Downloading data for: {ticker}.')
     raw_data = yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True)
+    # 52 * 3 + 34 = 190 weeks. # 190c = total cash amount invested over 190 weeks where c is the amount invested per week.
 
     df = preprocess_data(raw_data) # df stands for dataframe
     clf = train_model(df) # train ML model based on df
     data = bt.feeds.PandasData(dataname=df)
 
     cerebro.adddata(data)  # add datafeed to cerebro
-    cerebro.addstrategy(MLStrategy, model=clf)  # use SMACrossover strategy for the backtest.\
-
-
+    cerebro.addstrategy(MLStrategy, model=clf)  # use SMACrossover strategy for the backtest.
     # Set our desired cash start
     cerebro.broker.set_cash(100.0)
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
@@ -55,7 +51,7 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
 
     # extract backtrader data
-    dates = [bt.num2date(x) for x in strategy.data.datetime.array]
+    dates = df.index.tolist()
     closes = strategy.data.close.array
     sma_short = strategy.sma_short.array
     sma_long = strategy.sma_long.array

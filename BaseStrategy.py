@@ -1,5 +1,7 @@
 import backtrader as bt
-from Investment import WeeklyCapitalInjectionAnalyzer
+import datetime
+from datetime import timedelta
+from datetime import date
 
 class BaseStrategy(bt.Strategy): # base strategy class that implements take-profit and stop-loss.
     params = (
@@ -14,7 +16,6 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
     )
 
     def __init__(self):
-        self.current_index = 0
         self.cash_values = []
         self.account_values = []
         self.position_sizes = []
@@ -26,14 +27,27 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.take_profit_triggered = False
         self.days_since_rebalance = 0
         self.just_rebalanced = False
-        self.last_injection_date = self.data.datetime.datetime(0)
-    
-    def add_cash(self, amount):
-    #  Add cash to the broker's account balance.
-        self.broker.add_cash(amount)
-        print(f"Added ${amount:.2f} to cash balance on {self.data.datetime[0]}")
+        self.current_index = 0
+        self.dates = [bt.num2date(x) for x in self.data.datetime.array]
+        if self.dates:
+            self.start_date = self.dates[0]
+            self.end_date = self.dates[-1]
+        else:
+            self.start_date = None
+            self.end_date = None
+        self.last_injection_date = None
+        self.days_since_last_injection = 7
 
+
+    def add_cash(self):
+        current_date = self.data.datetime.date(0)
         
+        # If it's the first time or a week has passed since the last injection
+        days_since_last_injection = (current_date - self.last_injection_date).days if self.last_injection_date else 7
+        if days_since_last_injection >= 7:
+            self.broker.add_cash(self.p.weekly_cash_injection)
+            self.last_injection_date = current_date
+            print(f"Cash injection on: {current_date}")
 
     def rebalance(self):
         print("Rebalancing portfolio")
@@ -75,10 +89,10 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
 
 
 
-    def initialize_lists(self, multiplier):
-        self.position_sizes = [self.position.size] * multiplier
-        self.cash_values = [self.broker.get_cash()] * multiplier
-        self.account_values = [self.broker.get_value()] * multiplier
+    def initialize_lists(self):
+        self.position_sizes = [self.position.size]
+        self.cash_values = [self.broker.get_cash()]
+        self.account_values = [self.broker.get_value()]
     
     def update_lists(self):
         self.cash_values.append(self.broker.get_cash())  # append the current cash value to the list.
@@ -86,7 +100,7 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.position_sizes.append(self.position.size) # append the current position size to list
     
     def take_profit_and_stop_loss(self):
-        
+        price_change = 0.0
         if self.price is not None:
             price_change = (self.data.close[0] - self.price) / self.price # calculate % change in price since purchase
         if self.position.size == 0:
