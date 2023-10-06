@@ -36,6 +36,15 @@ class MLStrategy (BaseStrategy):
         self.d_line = self.stochastic.lines.percD
         
     def next(self):
+        current_date = self.data.datetime.datetime()
+        
+        # Calculate the number of days since the last injection
+        days_since_injection = (current_date - self.last_injection_date).days
+        
+        if days_since_injection >= 7:  # Check if a week has passed
+            self.add_cash(self.params.weekly_cash_injection)
+            self.last_injection_date = current_date
+
         current_data = [
             self.sma_short[0], self.sma_long[0], self.rsi[0], self.macd.macd[0], self.macd.signal[0],
             self.upper_bollinger[0], self.lower_bollinger[0], self.k_line[0], self.d_line[0]

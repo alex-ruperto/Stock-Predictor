@@ -29,9 +29,11 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.last_injection_date = self.data.datetime.datetime(0)
     
     def add_cash(self, amount):
-        #  Add cash to the broker's account balance.
+    #  Add cash to the broker's account balance.
         self.broker.add_cash(amount)
         print(f"Added ${amount:.2f} to cash balance on {self.data.datetime[0]}")
+
+        
 
     def rebalance(self):
         print("Rebalancing portfolio")
@@ -139,15 +141,6 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
             
 
     def next(self):
-        current_date = self.data.datetime.datetime()
-        
-        # Calculate the number of days since the last injection
-        days_since_injection = (current_date - self.last_injection_date).days
-        
-        if days_since_injection >= 7:  # Check if a week has passed
-            self.add_cash(self.params.weekly_cash_injection)
-            self.last_injection_date = current_date
-
         self.days_since_rebalance += 1 # add one to the count
         
         if self.days_since_rebalance >= self.p.rebalance_days: # execute rebalance and reset counter variable
