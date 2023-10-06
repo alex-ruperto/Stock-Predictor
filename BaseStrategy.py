@@ -47,7 +47,6 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         if days_since_last_injection >= 7:
             self.broker.add_cash(self.p.weekly_cash_injection)
             self.last_injection_date = current_date
-            print(f"Cash injection on: {current_date}")
 
     def rebalance(self):
         print("Rebalancing portfolio")
