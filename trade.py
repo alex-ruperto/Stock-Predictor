@@ -13,7 +13,7 @@ from ml_models import train_model
 import pandas as pd
 from ml_models import preprocess_data
 
-TICKERS = ['VOO']
+TICKERS = ['VOO', 'AMC', 'NVDA', 'AAPL', 'GOOG']
 app = dash.Dash(__name__)
 
 
@@ -33,6 +33,7 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
 
     df = preprocess_data(raw_data) # df stands for dataframe
     clf = train_model(df) # train ML model based on df
+    clf.eval() # set to evaluation mode.
     data = bt.feeds.PandasData(dataname=df)
 
     cerebro.adddata(data)  # add datafeed to cerebro

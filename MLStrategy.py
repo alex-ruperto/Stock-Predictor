@@ -3,6 +3,7 @@ from BaseStrategy import BaseStrategy
 import pandas as pd
 from ml_models import bollinger_bands, stochastic_oscillator
 from collections import deque
+import torch
 
 class MLStrategy (BaseStrategy):
     params = [
@@ -61,13 +62,15 @@ class MLStrategy (BaseStrategy):
 
         if len(self.rolling_window) == 60:
             df = pd.DataFrame(self.rolling_window, columns=['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line'])
-            prediction = self.params.model.predict(df.values.reshape(1, 60, len(df.columns)), verbose = None)[0][0]
+            input_data = torch.tensor(df.values.reshape(1, 60, len(df.columns)), dtype=torch.float32)
+            with torch.no_grad(): # don't compute gradients during inference to save memory and speed up predictions
+                prediction = self.p.model(input_data)
         
-        if prediction is not None and prediction > 0.5:  # If the model predicts the stock will go up. 0.5 or higher is
+        if prediction is not None and prediction.item() > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.buy()
-        elif self.position.size > 0 and prediction < 0.5 and prediction is not None: 
+        elif prediction is not None and self.position.size > 0 and prediction.item() < 0.5:
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
-            self.sell()
+            self.sell() 
         
         self.update_lists()

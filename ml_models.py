@@ -1,14 +1,12 @@
 import pandas as pd
 import numpy as np
-import tensorflow as tf
-from keras.callbacks import EarlyStopping
+import torch
+import torch.nn as nn
+import torch.optim as optim
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split  # Add this import
 from sklearn.impute import SimpleImputer  # Add this import
-import logging
-
-
 
 # features
 def preprocess_data(df):
@@ -60,6 +58,31 @@ def stochastic_oscillator(data, window=14):
     d_line = k_line.rolling(window=3).mean()
     return k_line, d_line
 
+# end of features
+
+# note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
+# model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
+class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
+    def __init__(self, input_dim, hidden_dim): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
+        super(LSTMModel, self).__init__() # call the init function from the superclass.
+        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
+        self.fc = nn.Linear(hidden_dim, 1) # A fully connected (or linear) layer that maps from the LSTM's hidden units to a single output unit.
+        self.sigmoid = nn.Sigmoid() # squashes the output between 0 and 1. value will always be between 0 and 1.
+
+    def forward(self, x): # defines forward pass of neural network.
+        h0 = torch.zeros(1, x.size(0), 50).requires_grad_().to(x.device) # initial hidden state of LSTM. 1 is the number of LSTM layers. x.size(0) is the batch size. 
+        c0 = torch.zeros(1, x.size(0), 50).requires_grad_().to(x.device) # initial cell state of LSTM. 
+        # 50 = size of hidden state and cell states. this defines how many numbers (neurons) the LSTM will use to represent the information it has seen so far at each time step.
+
+        '''The LSTM layer is called with the input tensor x and the initial states (h0, c0). It returns the output tensor out and the final hidden and cell states (hn, cn). 
+        The .detach() method is called on the initial states to ensure they are not part of the computation graph and are not updated during backpropagation.
+        '''
+        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach())) # this returns the output tensor 'out.' and the final hidden cell states, hn cn. detach is called on the inital states to ensure they're not updated during backpropagation.
+        out = self.fc(out[:, -1, :]) # selects the last timestep's outut from the LSTM layer for each item in the batch. sets it equal to out.
+        out = self.sigmoid(out)
+        return out
+
+# model training and data pre processing
 def train_model(df):
     # Handle missing values using mean imputation
     imputer = SimpleImputer(strategy='mean')
@@ -83,26 +106,37 @@ def train_model(df):
     X_test_reshaped = np.array([X_test.values[i-60:i] for i in range(60, X_test.shape[0])])
     y_test_reshaped = y_test.values[60:]
 
-    # Define LSTM model
-    model = tf.keras.Sequential([
-        tf.keras.layers.LSTM(50, activation='relu', input_shape=(X_train_reshaped.shape[1], X_train_reshaped.shape[2])),
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    # Convert data to PyTorch tensors
+    X_train_tensor = torch.tensor(X_train_reshaped, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train_reshaped[:, None], dtype=torch.float32)
+    X_test_tensor = torch.tensor(X_test_reshaped, dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test_reshaped[:, None], dtype=torch.float32)
 
-    # Define early stopping to monitor performance during training and stopping when performance degrades. Prevents continuous learning of noise.
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    model = LSTMModel(X_train_reshaped.shape[2], 50)
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Train model
-    model.fit(X_train_reshaped, y_train_reshaped, epochs=15, validation_data=(X_test_reshaped, y_test_reshaped), callbacks=[early_stopping])
+    # Training loop
+    for epoch in range(15): # update model's weights 15 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
+        model.train()
+        optimizer.zero_grad()
+        outputs = model(X_train_tensor)
+        loss = criterion(outputs, y_train_tensor) # how well the model is perfoming during the dataset. consistently decreasing training may be good but also may mean it's overfitting.
+        loss.backward()
+        optimizer.step()
 
-    # Predictions
-    y_pred = model.predict(X_test_reshaped)
-    y_pred = (y_pred > 0.5).astype(int)
+        # Validation
+        model.eval()
+        val_outputs = model(X_test_tensor)
+        val_loss = criterion(val_outputs, y_test_tensor) # how well does the model perform on the dataset that it hasn't seen during training. validation set.
+        print(f"Epoch {epoch+1}, Loss: {loss.item()}, Val Loss: {val_loss.item()}")
+
+    y_pred = model(X_test_tensor)
+    y_pred = (y_pred.detach().numpy() > 0.5).astype(int)
     accuracy = accuracy_score(y_test_reshaped, y_pred)
-    
     print(f"Model Accuracy on Test Set with LSTM: {accuracy:.2f}")
     
     return model
+    
+    
 
