@@ -50,11 +50,19 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     strategy = cerebro.run()[0]
     # Print out the final result
     print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
-    correct_predictions = sum([pred == actual for pred, actual in zip(strategy.predictions, strategy.actual_movements)])
-    total_predictions = len(strategy.predictions)
-    accuracy_post_backtest = correct_predictions / total_predictions if total_predictions != 0 else 0
-    print(f"Total accuracy after backtest: {accuracy_post_backtest * 100:.2f}%")
+    print(f"Actual Movement Length after warmup period: {len(strategy.actual_movements)}")
+    print(f"Total Predictions: {len(strategy.predictions)}")
+    total_correct_predictions = 0
+    print(strategy.actual_movements[:30])
+    print(strategy.predictions[:30])
+    for prediction, actual in zip(strategy.predictions, strategy.actual_movements):
+        if prediction == actual:
+            total_correct_predictions += 1
 
+    print(f"Total Correct Predictions: {total_correct_predictions}")
+    accuracy = total_correct_predictions / len(strategy.predictions)
+    print(f"Total Accuracy: {accuracy * 100:.2f}%")
+    
     # extract backtrader data
     dates = df.index.tolist()
     closes = strategy.data.close.array
