@@ -50,7 +50,6 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     strategy = cerebro.run()[0]
     # Print out the final result
     print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
-    print(f"Actual Movement Length after warmup period: {len(strategy.actual_movements)}")
     print(f"Total Predictions: {len(strategy.predictions)}")
     total_correct_predictions = 0
     print(strategy.actual_movements[:30])

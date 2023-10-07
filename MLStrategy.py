@@ -13,6 +13,7 @@ class MLStrategy (BaseStrategy):
     def __init__(self):
         super().__init__()
         self.initialize_lists()
+        self.previous_close = None
         self.actual_movements = []
         self.predictions = []
         # init rolling window
@@ -37,6 +38,7 @@ class MLStrategy (BaseStrategy):
         self.stochastic = bt.indicators.Stochastic(self.data)
         self.k_line = self.stochastic.lines.percK
         self.d_line = self.stochastic.lines.percD
+    
 
     
     def prenext(self): # this will be called before next method. for all data points before long SMA minimum period.
@@ -69,14 +71,10 @@ class MLStrategy (BaseStrategy):
                 prediction = self.p.model(input_data)
                 self.predictions.append(1 if prediction > 0.5 else 0)  # Assuming 1 is for "price will go up" and 0 otherwise
                 # Capture the actual movement in the next timestep (up or down)
-                if self.data._idx + 1 < len(self.data):  # Check if a next bar is available
-                    next_close = self.data.close[self.data._idx + 1]
-                else:
-                    next_close = self.data.close[self.data._idx]  # Current close as fallback
-                    
-                movement = 1 if next_close > self.data.close[0] else 0
+                current_close = self.data.close[0]
+                previous_close = self.previous_close if self.previous_close is not None else current_close
+                movement = 1 if previous_close < current_close else 0 # movement is 1 if previous is less than current. otherwise, it's 0.
                 self.actual_movements.append(movement)
-                
         
         if prediction is not None and prediction.item() > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
@@ -86,3 +84,4 @@ class MLStrategy (BaseStrategy):
             self.sell() 
         
         self.update_lists()
+        self.previous_close = self.data.close[0] # update previous_close as the value of the close right now.
