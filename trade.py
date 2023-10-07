@@ -13,7 +13,7 @@ from ml_models import train_model
 import pandas as pd
 from ml_models import preprocess_data
 
-TICKERS = ['VOO', 'AMC', 'NVDA', 'AAPL', 'GOOG']
+TICKERS = ['NVDA', 'AAPL', 'GOOG']
 app = dash.Dash(__name__)
 
 
@@ -50,6 +50,10 @@ def generate_figure_for_ticker(ticker): # function to backtest and plot individu
     strategy = cerebro.run()[0]
     # Print out the final result
     print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
+    correct_predictions = sum([pred == actual for pred, actual in zip(strategy.predictions, strategy.actual_movements)])
+    total_predictions = len(strategy.predictions)
+    accuracy_post_backtest = correct_predictions / total_predictions if total_predictions != 0 else 0
+    print(f"Total accuracy after backtest: {accuracy_post_backtest * 100:.2f}%")
 
     # extract backtrader data
     dates = df.index.tolist()

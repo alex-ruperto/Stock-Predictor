@@ -19,6 +19,7 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
         self.cash_values = []
         self.account_values = []
         self.position_sizes = []
+        
         self.sell_dates = []
         self.buy_dates = []
         self.order = None
@@ -49,8 +50,6 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
             self.last_injection_date = current_date
 
     def rebalance(self):
-        print("Rebalancing portfolio")
-
         # Calculate total portfolio value
         total_value = self.broker.get_value()
 

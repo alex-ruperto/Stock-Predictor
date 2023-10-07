@@ -13,6 +13,8 @@ class MLStrategy (BaseStrategy):
     def __init__(self):
         super().__init__()
         self.initialize_lists()
+        self.actual_movements = []
+        self.predictions = []
         # init rolling window
         self.rolling_window = deque (maxlen=60)
 
@@ -65,6 +67,15 @@ class MLStrategy (BaseStrategy):
             input_data = torch.tensor(df.values.reshape(1, 60, len(df.columns)), dtype=torch.float32)
             with torch.no_grad(): # don't compute gradients during inference to save memory and speed up predictions
                 prediction = self.p.model(input_data)
+                self.predictions.append(1 if prediction > 0.5 else 0)  # Assuming 1 is for "price will go up" and 0 otherwise
+                # Capture the actual movement in the next timestep (up or down)
+                if self.data._idx + 1 < len(self.data):  # Check if a next bar is available
+                    next_close = self.data.close[1]
+                else:
+                    next_close = self.data.close[0]  # Current close as fallback
+
+                movement = 1 if next_close > self.data.close[0] else 0
+                self.actual_movements.append(movement)
         
         if prediction is not None and prediction.item() > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
