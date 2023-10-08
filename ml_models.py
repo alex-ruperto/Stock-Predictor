@@ -63,24 +63,18 @@ def stochastic_oscillator(data, window=14):
 # note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
 # model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
 class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
-    def __init__(self, input_dim, hidden_dim): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
+    def __init__(self, input_dim, hidden_dim, num_layers=2, dropout=0.3): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
         super(LSTMModel, self).__init__() # call the init function from the superclass.
-        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
-        self.fc = nn.Linear(hidden_dim, 1) # A fully connected (or linear) layer that maps from the LSTM's hidden units to a single output unit.
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
+        
+        self.linear = nn.Linear(hidden_dim, 1)
         self.sigmoid = nn.Sigmoid() # squashes the output between 0 and 1. value will always be between 0 and 1.
 
     def forward(self, x): # defines forward pass of neural network.
-        h0 = torch.zeros(1, x.size(0), 50).requires_grad_().to(x.device) # initial hidden state of LSTM. 1 is the number of LSTM layers. x.size(0) is the batch size. 
-        c0 = torch.zeros(1, x.size(0), 50).requires_grad_().to(x.device) # initial cell state of LSTM. 
-        # 50 = size of hidden state and cell states. this defines how many numbers (neurons) the LSTM will use to represent the information it has seen so far at each time step.
+        lstm_out, _ = self.lstm(x)
+        y_pred = self.sigmoid(self.linear(lstm_out[:, -1, :]))
+        return y_pred
 
-        '''The LSTM layer is called with the input tensor x and the initial states (h0, c0). It returns the output tensor out and the final hidden and cell states (hn, cn). 
-        The .detach() method is called on the initial states to ensure they are not part of the computation graph and are not updated during backpropagation.
-        '''
-        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach())) # this returns the output tensor 'out.' and the final hidden cell states, hn cn. detach is called on the inital states to ensure they're not updated during backpropagation.
-        out = self.fc(out[:, -1, :]) # selects the last timestep's outut from the LSTM layer for each item in the batch. sets it equal to out.
-        out = self.sigmoid(out)
-        return out
 
 # model training and data pre processing
 def train_model(df):
