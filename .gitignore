@@ -1,5 +1,5 @@
 *.log
 temp/
-trading-bot-env/
+trading-bot/
 Pipfile/
 Pipfile.lock/
