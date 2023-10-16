@@ -3,3 +3,10 @@ temp/
 trading-bot/
 Pipfile/
 Pipfile.lock/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.bak
+*.dat
+*.dir
