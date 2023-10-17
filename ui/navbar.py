@@ -13,9 +13,8 @@ def create_navbar():
                     # side of the Navbar.  The first parameter is the text that appears and the second parameter 
                     # is the URL extension.
                     dbc.DropdownMenuItem("Home", href='/'), # Hyperlink item that appears in the dropdown menu
-                    dbc.DropdownMenuItem(divider=True), # Divider item that appears in the dropdown menu 
-                    dbc.DropdownMenuItem("Page 2", href='/page-2'), # Hyperlink item that appears in the dropdown menu
-                    dbc.DropdownMenuItem("Page 3", href='/page-3'), # Hyperlink item that appears in the dropdown menu
+                    dbc.DropdownMenuItem("Page 2", href='/2'), # Hyperlink item that appears in the dropdown menu
+                    dbc.DropdownMenuItem("Page 3", href='/3'), # Hyperlink item that appears in the dropdown menu
                 ],
             ),
         ],

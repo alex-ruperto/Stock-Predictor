@@ -3,18 +3,15 @@ import dash
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
+from app import app
 import dash_bootstrap_components as dbc
 from UI.home_page import create_page_home
 from UI.page_2 import create_page_2
 from UI.page_3 import create_page_3
 
-
-
-
 TICKERS = ['NVDA', 'AAPL', 'GOOG']
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
-
-
+server = app.server
+app.config.suppress_callback_exceptions = True
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -26,12 +23,14 @@ app.layout = html.Div([
 
 
 def display_page(pathname):
-    if pathname == '/page-2':
+    if pathname == '/2':
         return create_page_2()
-    if pathname == '/page-3':
+    elif pathname == '/3':
         return create_page_3()
-    else:
+    elif pathname == '/':
         return create_page_home()
-
+    else:
+        return create_page_home()  # default to home page for any other path
+    
 if __name__ == '__main__':
-    app.run_server(debug=True, use_reloader=False)
+    app.run_server(debug=True)
