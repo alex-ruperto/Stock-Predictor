@@ -7,8 +7,8 @@ from dash import Input, Output, State, html, Dash, html, dcc
 navbar = dbc.NavbarSimple(
     children=[
         dbc.NavItem(dbc.NavLink("Home Page", href="/")),
-        dbc.NavItem(dbc.NavLink("Page 2", href="/page-2")),
-        dbc.NavItem(dbc.NavLink("Page 3", href="/page-3")),
+        dbc.NavItem(dbc.NavLink("Tickers", href="/tickers")),
+        dbc.NavItem(dbc.NavLink("Backtest", href="/backtest")),
     ],
     brand="Trading Bot",
     color="primary",

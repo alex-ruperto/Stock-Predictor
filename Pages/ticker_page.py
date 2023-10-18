@@ -8,9 +8,9 @@ import ticker_db
 
 dash.register_page(
     __name__, 
-    title="Page 2",
-    path='/page-2',
-    description="This is page 2"
+    title="Tickers",
+    path='/tickers',
+    description="This is the page to handle tickers"
 )
 
 layout = html.Div([

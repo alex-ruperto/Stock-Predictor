@@ -8,9 +8,9 @@ import dash_bootstrap_components as dbc
 
 dash.register_page(
     __name__, 
-    title="Page 3",
-    path='/page-3',
-    description="This is page 3"
+    title="Backtest",
+    path='/backtest',
+    description="This is the backtest data."
 )
 
 # Assuming TICKERS is a list of ticker symbols
@@ -39,6 +39,20 @@ layout = dbc.Container([
     ])
 ])
 
+# Callback to update dropdown options. In case something was added or removed.
+@callback(
+    Output('ticker-dropdown', 'options'),
+    Output('ticker-dropdown', 'value'),
+    Input('ticker-dropdown', 'value')
+)
+def update_dropdown_options(current_value): 
+    tickers = get_all_tickers()
+    options = [{'label': ticker, 'value': ticker} for ticker in tickers]
+    # If the current value is not in the updated ticker list, reset the dropdown value
+    value = current_value if current_value in tickers else (tickers[0] if tickers else None)
+    return options, value
+
+# Callback to change the selected graph
 @callback(
     Output('ticker-graph', 'figure'),
     [Input('ticker-dropdown', 'value')]
