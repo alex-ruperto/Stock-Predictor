@@ -1,7 +1,10 @@
 import dash
 from dash import html, dcc
-from Pages.UI.figures import generate_figures_for_tickers
 from dash.dependencies import Input, Output, State
+from ticker_db import get_all_tickers, get_ticker_data
+from Pages.UI.figures import generate_figure_for_ticker
+import ticker_db
+import dash_bootstrap_components as dbc
 
 dash.register_page(
     __name__, 
@@ -11,19 +14,26 @@ dash.register_page(
 )
 
 # Assuming TICKERS is a list of ticker symbols
-TICKERS = ["AAPL", "MSFT", "GOOGL"]  # Example tickers, replace with your list
-figures = generate_figures_for_tickers(TICKERS)
+TICKERS = get_all_tickers()
 
 # Dropdown component for ticker selection
 ticker_dropdown = dcc.Dropdown(
     id='ticker-dropdown',
     options=[{'label': ticker, 'value': ticker} for ticker in TICKERS],
-    value=TICKERS[0]  # Default to the first ticker
+    value=TICKERS[0] if TICKERS else None  # Default to the first ticker or none
 )
 
 # Layout for page_3
-layout = html.Div([
-    html.H3('Stock Analysis Page'),
-    ticker_dropdown,
-    dcc.Graph(id='ticker-graph', figure=figures[TICKERS[0]])  # Default figure
+layout = dbc.Container([
+    dbc.Row([
+        dcc.Dropdown(
+            id='ticker-dropdown',
+            options=[{'label': ticker, 'value': ticker} for ticker in ticker_db.get_all_tickers()],
+            value=ticker_db.get_all_tickers()[0] if ticker_db.get_all_tickers() else None # Default value.
+        ),
+        
+    ], className='mt-5'), #bootstrap's margin-top
+    dbc.Row([
+        dcc.Graph(id='ticker-graph')
+    ])
 ])

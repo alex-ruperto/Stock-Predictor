@@ -1,10 +1,8 @@
 # imports 
+from app_instance import app
 import dash_bootstrap_components as dbc
 import dash
 from dash import Input, Output, State, html, Dash, html, dcc
-
-
-app = Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -19,12 +17,13 @@ navbar = dbc.NavbarSimple(
 
 app.layout = dbc.Container(
     [
-        navbar,
-        dash.page_container
+        dbc.Row([navbar]),
+        dbc.Row([dash.page_container], className="mt-5")
     ],
     className="dbc",
     fluid=True
 )
+
 
 if __name__ == '__main__':
     app.run(debug=True)
