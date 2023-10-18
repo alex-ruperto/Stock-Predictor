@@ -1,8 +1,9 @@
 import dash
-from dash import html, dcc
+from dash import html, dcc, callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 from ticker_db import add_ticker, remove_ticker, get_all_tickers
+import ticker_db
 
 
 dash.register_page(
@@ -26,3 +27,33 @@ layout = html.Div([
     # Placeholder for displaying list of tickers
     html.Div(id='tickers-display', className="mt-4")
 ])
+
+# Register the callbacks for page_2
+@callback(
+    Output('tickers-display', 'children'),
+    [
+        Input('add-ticker-button', 'n_clicks'),
+        Input('remove-ticker-button', 'n_clicks'),
+        Input('display-tickers-button', 'n_clicks')
+    ],
+    State('ticker-input', 'value')
+)
+def update_db(add_click, remove_click, display_click, ticker_value):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return ""
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id == 'add-ticker-button':
+        ticker_db.add_ticker(ticker_value)
+        return f"Added {ticker_value}"
+
+    elif button_id == 'remove-ticker-button':
+        ticker_db.remove_ticker(ticker_value)
+        return f"Removed {ticker_value}"
+
+    elif button_id == 'display-tickers-button':
+        all_tickers = ticker_db.get_all_tickers()
+        return ", ".join(all_tickers)
+
+    return ""

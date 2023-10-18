@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc
+from dash import html, dcc, callback
 from dash.dependencies import Input, Output, State
 from ticker_db import get_all_tickers, get_ticker_data
 from Pages.UI.figures import generate_figure_for_ticker
@@ -29,7 +29,8 @@ layout = dbc.Container([
         dcc.Dropdown(
             id='ticker-dropdown',
             options=[{'label': ticker, 'value': ticker} for ticker in ticker_db.get_all_tickers()],
-            value=ticker_db.get_all_tickers()[0] if ticker_db.get_all_tickers() else None # Default value.
+            value=ticker_db.get_all_tickers()[0] if ticker_db.get_all_tickers() else None, # Default value.
+            clearable=False
         ),
         
     ], className='mt-5'), #bootstrap's margin-top
@@ -37,3 +38,11 @@ layout = dbc.Container([
         dcc.Graph(id='ticker-graph')
     ])
 ])
+
+@callback(
+    Output('ticker-graph', 'figure'),
+    [Input('ticker-dropdown', 'value')]
+)
+def update_graph(selected_ticker):
+    ticker_data = get_ticker_data(selected_ticker)
+    return ticker_data['figure'] if ticker_data else {}
