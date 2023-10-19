@@ -10,3 +10,5 @@ __pycache__/
 *.bak
 *.dat
 *.dir
+.idea/
+_.DS_Store
