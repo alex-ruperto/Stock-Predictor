@@ -1,7 +1,7 @@
 import backtrader as bt
 from Strategies.BaseStrategy import BaseStrategy
 import pandas as pd
-from ml_models import bollinger_bands, stochastic_oscillator
+from lstm_model import bollinger_bands, stochastic_oscillator
 from collections import deque
 import torch
 
