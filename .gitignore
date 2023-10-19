@@ -1,6 +1,6 @@
 *.log
 temp/
-trading-bot/
+venv/
 Pipfile/
 Pipfile.lock/
 __pycache__/
