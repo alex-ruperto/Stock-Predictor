@@ -10,14 +10,15 @@ from sklearn.impute import SimpleImputer  # Add this import
 
 # features
 def preprocess_data(df):
+    time_interval = 26 # adjust this to whatever the time interval from raw_data in data_processing is. there are 26 15 minute interval candles in a single trading day.
     # compare next day closing price to current day. convert boolean values to integer values
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) 
-    df['SMA1'] = df['Close'].rolling(window=50).mean()
-    df['SMA2'] = df['Close'].rolling(window=200).mean()
-    df['RSI'] = rsi_formula(df['Close'], window=14)
-    df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12, long_window=26, signal_window=9)
-    df['Upper_Bollinger'], df['Lower_Bollinger'] = bollinger_bands(df['Close'])
-    df['K_Line'], df['D_Line'] = stochastic_oscillator(df['Close'])
+    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
+    df['SMA1'] = df['Close'].rolling(window=50*time_interval).mean()
+    df['SMA2'] = df['Close'].rolling(window=200*time_interval).mean()
+    df['RSI'] = rsi_formula(df['Close'], window=14*time_interval)
+    df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12*time_interval, long_window=26*time_interval, signal_window=9*time_interval)
+    df['Upper_Bollinger'], df['Lower_Bollinger'] = bollinger_bands(df['Close'], window=20*time_interval)
+    df['K_Line'], df['D_Line'] = stochastic_oscillator(df['Close'], window=14*time_interval)
 
     return df
 
@@ -42,7 +43,7 @@ def macd_formula(data, short_window, long_window, signal_window):
     
     return macd_line, signal_line
 
-def bollinger_bands(data, window=20, num_std_dev=2):
+def bollinger_bands(data, window, num_std_dev=2):
     """Compute Bollinger Bands"""
     rolling_mean = data.rolling(window=window).mean()
     rolling_std = data.rolling(window=window).std()
@@ -50,7 +51,7 @@ def bollinger_bands(data, window=20, num_std_dev=2):
     lower_band = rolling_mean - (rolling_std * num_std_dev)
     return upper_band, lower_band
 
-def stochastic_oscillator(data, window=14):
+def stochastic_oscillator(data, window):
     """Compute Stochastic Oscillator"""
     low_min = data.rolling(window=window).min()
     high_max = data.rolling(window=window).max()

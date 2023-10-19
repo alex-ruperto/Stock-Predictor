@@ -13,3 +13,4 @@ __pycache__/
 .idea/
 _.DS_Store
 trading-bot-env/
+config.py
