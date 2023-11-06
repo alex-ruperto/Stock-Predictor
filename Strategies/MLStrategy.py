@@ -1,7 +1,6 @@
 import backtrader as bt
 from Strategies.BaseStrategy import BaseStrategy
 import pandas as pd
-from lstm_model import bollinger_bands, stochastic_oscillator
 from collections import deque
 import torch
 
@@ -38,8 +37,6 @@ class MLStrategy (BaseStrategy):
         self.stochastic = bt.indicators.Stochastic(self.data)
         self.k_line = self.stochastic.lines.percK
         self.d_line = self.stochastic.lines.percD
-    
-
     
     def prenext(self): # this will be called before next method. for all data points before long SMA minimum period.
         self.add_cash()

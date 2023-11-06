@@ -10,9 +10,16 @@ def backtest(ticker): # function to backtest and plot individual ticker based on
     # Fetch historical data
     start_date, end_date = calculate_dates()
     print(f'Downloading data for: {ticker}.')
-    raw_data = yf.download(ticker, start_date, end_date, interval='15m', auto_adjust=True)
+    raw_data = yf.download(ticker, start_date, end_date, interval='1h', auto_adjust=True)
+
+    # After downloading the data
+    print(f"Number of data points: {len(raw_data)}")
+    print("Raw 'Close' data:")
+    print(raw_data['Close'].head())
 
     df = preprocess_data(raw_data) # df stands for dataframe
+    print("SMA1 and SMA2 values:")
+    print(df[['SMA1', 'SMA2']].head(210))  # Assuming a window size that could be up to 200
     clf = train_model(df) # train ML model based on df
     clf.eval() # set to evaluation mode.
     data = bt.feeds.PandasData(dataname=df)

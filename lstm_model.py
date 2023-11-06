@@ -12,7 +12,7 @@ import pandas_ta
 
 # features
 def preprocess_data(df):
-    time_interval = 26 # adjust this to whatever the time interval from raw_data in data_processing is. there are 26 15 minute interval candles in a single trading day.
+    time_interval = 6.5 # adjust this to whatever the time interval from raw_data in data_processing is. there are 26 15 minute interval candles in a single trading day.
     # compare next day closing price to current day. convert boolean values to integer values
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
     # Simple Moving Averages 1 and 2
@@ -24,20 +24,29 @@ def preprocess_data(df):
 
     # Moving Average Convergence Divergence (MACD)
     macd = pandas_ta.macd(df['Close'], fast=12*time_interval, slow=26*time_interval, signal=9*time_interval)
-    df['MACD_Line'] = macd['MACD_312_676_234']
-    df['Signal_Line'] = macd['MACDs_312_676_234']
+    macd_line_col = macd.columns[0]  # MACD line is typically the first column
+    signal_line_col = macd.columns[2]  # Signal line is typically the third column
+    df['MACD_Line'] = macd[macd_line_col]
+    df['Signal_Line'] = macd[signal_line_col]
 
     # Bollinger Bands
     bollinger = pandas_ta.bbands(df['Close'], length=20*time_interval, std=2)
+    upper_band_col = bollinger.columns[0]  # Upper band is typically the first column
+    lower_band_col = bollinger.columns[2]  # Lower band is typically the third column
+    df['Upper_Bollinger'] = bollinger[upper_band_col]
+    df['Lower_Bollinger'] = bollinger[lower_band_col]
 
-    df['Upper_Bollinger'] = bollinger['BBU_520_2.0']
-    df['Lower_Bollinger'] = bollinger['BBL_520_2.0']
-
-    stoch = pandas_ta.stoch(df['High'], df['Low'], df['Close'], k=14*time_interval, d=3*time_interval)
+    # Stochastic Oscillator
+    # Ensure k and d are integers
+    k = int(14 * time_interval)
+    d = int(3 * time_interval)
+    stoch = pandas_ta.stoch(df['High'], df['Low'], df['Close'], k=k, d=d)
     # 14 is the look back period, 3 is period for %K smoothing, 3 for %D line. %D is moving average of %K
     # multiply those numbers by the time interval
-    df['K_Line'] = stoch['STOCHk_364_78_3']
-    df['D_Line'] = stoch['STOCHd_364_78_3']
+    k_line_col = stoch.columns[0]  # %K line is typically the first column
+    d_line_col = stoch.columns[1]  # %D line is typically the second column
+    df['K_Line'] = stoch[k_line_col]
+    df['D_Line'] = stoch[d_line_col]
     
     return df
 
