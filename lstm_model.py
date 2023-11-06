@@ -7,57 +7,39 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split  # Add this import
 from sklearn.impute import SimpleImputer  # Add this import
+from pandas import concat
+import pandas_ta
 
 # features
 def preprocess_data(df):
     time_interval = 26 # adjust this to whatever the time interval from raw_data in data_processing is. there are 26 15 minute interval candles in a single trading day.
     # compare next day closing price to current day. convert boolean values to integer values
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
-    df['SMA1'] = df['Close'].rolling(window=50*time_interval).mean()
-    df['SMA2'] = df['Close'].rolling(window=200*time_interval).mean()
-    df['RSI'] = rsi_formula(df['Close'], window=14*time_interval)
-    df['MACD_Line'], df['Signal_Line'] = macd_formula(df['Close'], short_window=12*time_interval, long_window=26*time_interval, signal_window=9*time_interval)
-    df['Upper_Bollinger'], df['Lower_Bollinger'] = bollinger_bands(df['Close'], window=20*time_interval)
-    df['K_Line'], df['D_Line'] = stochastic_oscillator(df['Close'], window=14*time_interval)
-
-    return df
-
-def rsi_formula(data, window):
-    """Compute the RSI for a given data series."""
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).fillna(0)
-    loss = (-delta.where(delta < 0, 0)).fillna(0)
-    avg_gain = gain.rolling(window=window).mean()
-    avg_loss = loss.rolling(window=window).mean()
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-def macd_formula(data, short_window, long_window, signal_window):
-    """Compute the MACD for a given data series."""
-    short_ema = data.ewm(span=short_window, adjust=False).mean()
-    long_ema = data.ewm(span=long_window, adjust=False).mean()
-
-    macd_line = short_ema - long_ema
-    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
+    # Simple Moving Averages 1 and 2
+    df['SMA1'] = pandas_ta.sma(df['Close'], length=50*time_interval)
+    df['SMA2'] = pandas_ta.sma(df['Close'], length=200*time_interval)
     
-    return macd_line, signal_line
+    # Relative Strength Index (RSI)
+    df['RSI'] = pandas_ta.rsi(df['Close'], length=14*time_interval)
 
-def bollinger_bands(data, window, num_std_dev=2):
-    """Compute Bollinger Bands"""
-    rolling_mean = data.rolling(window=window).mean()
-    rolling_std = data.rolling(window=window).std()
-    upper_band = rolling_mean + (rolling_std * num_std_dev)
-    lower_band = rolling_mean - (rolling_std * num_std_dev)
-    return upper_band, lower_band
+    # Moving Average Convergence Divergence (MACD)
+    macd = pandas_ta.macd(df['Close'], fast=12*time_interval, slow=26*time_interval, signal=9*time_interval)
+    df['MACD_Line'] = macd['MACD_312_676_234']
+    df['Signal_Line'] = macd['MACDs_312_676_234']
 
-def stochastic_oscillator(data, window):
-    """Compute Stochastic Oscillator"""
-    low_min = data.rolling(window=window).min()
-    high_max = data.rolling(window=window).max()
-    k_line = 100 * ((data - low_min) / (high_max - low_min))
-    d_line = k_line.rolling(window=3).mean()
-    return k_line, d_line
+    # Bollinger Bands
+    bollinger = pandas_ta.bbands(df['Close'], length=20*time_interval, std=2)
+
+    df['Upper_Bollinger'] = bollinger['BBU_520_2.0']
+    df['Lower_Bollinger'] = bollinger['BBL_520_2.0']
+
+    stoch = pandas_ta.stoch(df['High'], df['Low'], df['Close'], k=14*time_interval, d=3*time_interval)
+    # 14 is the look back period, 3 is period for %K smoothing, 3 for %D line. %D is moving average of %K
+    # multiply those numbers by the time interval
+    df['K_Line'] = stoch['STOCHk_364_78_3']
+    df['D_Line'] = stoch['STOCHd_364_78_3']
+    
+    return df
 
 # end of features
 
