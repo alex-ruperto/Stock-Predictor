@@ -53,40 +53,11 @@ def preprocess_data(df):
 
 # end of features
 
-# note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
-# model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
-class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
-    def __init__(self, input_dim, hidden_dim, num_layers=2, dropout=0.3): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
-        super(LSTMModel, self).__init__() # call the init function from the superclass.
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
-        
-        self.linear = nn.Linear(hidden_dim, 1)
-        self.sigmoid = nn.Sigmoid() # squashes the output between 0 and 1. value will always be between 0 and 1.
-
-    def forward(self, x): # defines forward pass of neural network.
-        lstm_out, _ = self.lstm(x)
-        y_pred = self.sigmoid(self.linear(lstm_out[:, -1, :]))
-        return y_pred
-
-
-'''
-------------------------------------------------Train Test Validate------------------------------------------------
-'''
-def train_model(df, epochs=50, lookback=60):
-    # Handle missing values using mean imputation
-    imputer = SimpleImputer(strategy='mean')
-    df_imputed = df.copy()
-    df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
-                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 
-                'D_Line']] = imputer.fit_transform(df[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
-                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']])
-    X = df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']]
-    y = df_imputed['Target']
-
-######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
+def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=60):
+    ######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
     # Split data into training, validation, and test sets
-    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)  # 0.25 x 0.8 = 0.2
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=test_size, random_state=random_state)  
 
     # Reshape data for LSTM
     X_train_reshaped = np.array([X_train[i-lookback:i] for i in range(lookback, X_train.shape[0])])
@@ -103,14 +74,47 @@ def train_model(df, epochs=50, lookback=60):
     y_val_tensor = torch.tensor(y_val_reshaped.to_numpy()[:, None], dtype=torch.float32)
     X_test_tensor = torch.tensor(X_test_reshaped, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test_reshaped.to_numpy()[:, None], dtype=torch.float32)
+    return X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor
 
+# note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
+# model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
+class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
+    def __init__(self, input_dim, hidden_dim, num_layers=2, dropout=0.3): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
+        super(LSTMModel, self).__init__() # call the init function from the superclass.
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
+        
+        self.linear = nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid() # squashes the output between 0 and 1. value will always be between 0 and 1.
+
+    def forward(self, x): # defines forward pass of neural network.
+        lstm_out, _ = self.lstm(x)
+        # handle a batch size of 1
+        if lstm_out.dim() == 2:
+            lstm_out = lstm_out.unsqueeze(0)
+        y_pred = self.sigmoid(self.linear(lstm_out[:, -1, :]))
+        return y_pred
+
+'''
+------------------------------------------------Train Test Validate------------------------------------------------
+'''
+def train_model(df, epochs=50):
+    # Handle missing values using mean imputation
+    imputer = SimpleImputer(strategy='mean')
+    df_imputed = df.copy()
+    df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
+                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 
+                'D_Line']] = imputer.fit_transform(df[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
+                'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']])
+    X = df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']]
+    y = df_imputed['Target']
+
+    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X, y)
 
 ######################### Create, Train, Test, and Validate LSTM Model #########################
     model = LSTMModel(X_train_tensor.shape[-1], 50)
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    best_val_metric = float('inf')
     best_threshold = 0.5
 
     # Training loop
@@ -147,13 +151,14 @@ def train_model(df, epochs=50, lookback=60):
                     best_threshold = threshold
             
         # After finding the best threshold, calculate the accuracy with this threshold
+        y_val_binary_squeezed = y_val_binary.squeeze()
         best_binary_predictions = (val_predictions > best_threshold).int()
-        correct_val_predictions = (best_binary_predictions == y_val_binary).float().sum()
+        correct_val_predictions = (best_binary_predictions == y_val_binary_squeezed).float().sum()
         val_accuracy = correct_val_predictions / y_val_binary.size(0)
-
-
+        print(f"Correct val predictions: {correct_val_predictions}, y val binary size: {y_val_binary.size(0)}")
+        
         # Print epoch results
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val FL Score: {best_f1_score:.4f}, Best Threshold: {best_threshold:.2f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val FL Score: {best_f1_score:.4f}, Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}")
         
     # Evaluation on the test set with the best threshold found
     model.eval()
@@ -163,8 +168,9 @@ def train_model(df, epochs=50, lookback=60):
         correct_test_predictions = (test_binary_predictions == y_test_tensor).float().sum()
         test_accuracy = correct_test_predictions / y_test_tensor.size(0)
     
-     # Print final results
-    print(f"Final Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}")
+    # Print final results
+    print(f"Shape of best_binary_predictions: {best_binary_predictions.shape}")
+    
 
     return model, best_threshold, val_accuracy.item()
     

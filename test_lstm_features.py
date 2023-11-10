@@ -25,7 +25,7 @@ class TestFeatures(unittest.TestCase):
         # and is ready to be split into features and labels
         X = self.stock_data.drop('Target', axis=1).values
         y = self.stock_data['Target'].values
-        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X, y, test_size=0.25, random_state=42)
 
         # Convert the validation set to tensors
         self.X_val_tensor = torch.tensor(self.X_val, dtype=torch.float32)
