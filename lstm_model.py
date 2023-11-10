@@ -3,12 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split  # Add this import
-from sklearn.impute import SimpleImputer  # Add this import
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import f1_score
-from pandas import concat
+from torch.utils.data import DataLoader, TensorDataset
 import pandas_ta
 
 # features
@@ -97,7 +95,7 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
 '''
 ------------------------------------------------Train Validate Test------------------------------------------------
 '''
-def train_model(df, epochs=50):
+def train_model(df, epochs=50, batch_size=32, learning_rate=0.001):
     # Handle missing values using mean imputation
     imputer = SimpleImputer(strategy='mean')
     df_imputed = df.copy()
@@ -109,22 +107,28 @@ def train_model(df, epochs=50):
     y = df_imputed['Target']
 
     X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X, y)
+    # Prepare the data
+    train_data = TensorDataset(X_train_tensor, y_train_tensor)
+    train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
 
 ######################### Create, Train, Test, and Validate LSTM Model #########################
     model = LSTMModel(X_train_tensor.shape[-1], 50)
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
     best_threshold = 0.5
 
     # Training loop
     for epoch in range(epochs): # update model's weights 50 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
         model.train() # set the model to train mode.
-        optimizer.zero_grad() # reset gradients of all tensors
-        outputs = model(X_train_tensor)
-        loss = criterion(outputs, y_train_tensor) # how well the model is perfoming during the dataset. consistently decreasing training may be good but also may mean it's overfitting.
-        loss.backward()
-        optimizer.step()
+        for X_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            outputs = model(X_batch)
+            loss = criterion(outputs, y_batch)
+            loss.backward()
+            optimizer.step()
+        scheduler.step()
 
         # Validate for hyperparameter tuning
         model.eval()
