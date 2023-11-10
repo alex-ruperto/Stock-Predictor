@@ -1,18 +1,19 @@
 import yfinance as yf
 import backtrader as bt
-from ml_models import train_model
-from ml_models import preprocess_data
+from lstm_model import train_model
+from lstm_model import preprocess_data
 from Strategies.MLStrategy import MLStrategy
+from datetime import datetime, timedelta
 
 def backtest(ticker): # function to backtest and plot individual ticker based on strategy
-     # Fetch historical data
     cerebro = bt.Cerebro()
+    # Fetch historical data
+    start_date, end_date = calculate_dates()
     print(f'Downloading data for: {ticker}.')
-    raw_data = yf.download(ticker, '2019-01-01', '2023-09-01', auto_adjust=True)
-    # 52 * 3 + 34 = 190 weeks. # 190c = total cash amount invested over 190 weeks where c is the amount invested per week.
+    raw_data = yf.download(ticker, start_date, end_date, interval='1h', auto_adjust=True)
 
     df = preprocess_data(raw_data) # df stands for dataframe
-    clf = train_model(df) # train ML model based on df
+    clf, best_threshold = train_model(df) # train ML model based on df
     clf.eval() # set to evaluation mode.
     data = bt.feeds.PandasData(dataname=df)
 
@@ -21,7 +22,7 @@ def backtest(ticker): # function to backtest and plot individual ticker based on
     # Set our desired cash start
     cerebro.broker.set_cash(100.0)
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    print(f'Running backtest on: {ticker}.')
+    print(f'Running backtest on: {ticker} with best model threshold: {best_threshold}.')
 
     # Set the commision
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
@@ -62,3 +63,8 @@ def backtest(ticker): # function to backtest and plot individual ticker based on
     sells_y = [closes[dates.index(date)] for date in sells_x if date in dates]
 
     return dates, closes, sma_short, sma_long, rsi, macd, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
+
+def calculate_dates():
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=729)).strftime('%Y-%m-%d')
+    return start_date, end_date
