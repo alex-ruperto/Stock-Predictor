@@ -27,11 +27,13 @@ def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, 
     fig.add_trace(
         go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='200-day SMA', legend='legend1'), row=1,
         col=1)  # Plot 100-day SMA on row 1 col 1
+    # Plot the buys on row 1 col 1
     fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
-                             legend='legend1'), row=1, col=1)  # Plot the buys on row 1 col 1
+                             legend='legend1'), row=1, col=1)  
+    # Plot the sells on row 1 col 1
     fig.add_trace(
         go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
-                   legend='legend1'), row=1, col=1)  # Plot the sells on row 1 col 1
+                   legend='legend1'), row=1, col=1)  
     # Second Plot (RSI)
     fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend2'),
                   row=2, col=1)  # Plot close price on row 2 col 1

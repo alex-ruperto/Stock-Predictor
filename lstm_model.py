@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split  # Add this import
 from sklearn.impute import SimpleImputer  # Add this import
+from sklearn.metrics import f1_score
 from pandas import concat
 import pandas_ta
 
@@ -68,8 +69,10 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
         return y_pred
 
 
-# model training and data pre processing
-def train_model(df):
+'''
+------------------------------------------------Train Test Validate------------------------------------------------
+'''
+def train_model(df, epochs=50, lookback=60):
     # Handle missing values using mean imputation
     imputer = SimpleImputer(strategy='mean')
     df_imputed = df.copy()
@@ -77,52 +80,93 @@ def train_model(df):
                 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 
                 'D_Line']] = imputer.fit_transform(df[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 
                 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']])
-    
-    # Split data into training and test sets
     X = df_imputed[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line']]
     y = df_imputed['Target']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
+    # Split data into training, validation, and test sets
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)  # 0.25 x 0.8 = 0.2
 
     # Reshape data for LSTM
-    # In this case, using a lookback of 60 (similar to your rolling window in backtrader)
-    # Reshape to (samples, time_steps, features)
-    X_train_reshaped = np.array([X_train.values[i-60:i] for i in range(60, X_train.shape[0])])
-    y_train_reshaped = y_train.values[60:]
-    X_test_reshaped = np.array([X_test.values[i-60:i] for i in range(60, X_test.shape[0])])
-    y_test_reshaped = y_test.values[60:]
+    X_train_reshaped = np.array([X_train[i-lookback:i] for i in range(lookback, X_train.shape[0])])
+    y_train_reshaped = y_train[lookback:]
+    X_val_reshaped = np.array([X_val[i-lookback:i] for i in range(lookback, X_val.shape[0])])
+    y_val_reshaped = y_val[lookback:]
+    X_test_reshaped = np.array([X_test[i-lookback:i] for i in range(lookback, X_test.shape[0])])
+    y_test_reshaped = y_test[lookback:]
 
     # Convert data to PyTorch tensors
     X_train_tensor = torch.tensor(X_train_reshaped, dtype=torch.float32)
-    y_train_tensor = torch.tensor(y_train_reshaped[:, None], dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train_reshaped.to_numpy()[:, None], dtype=torch.float32)
+    X_val_tensor = torch.tensor(X_val_reshaped, dtype=torch.float32)
+    y_val_tensor = torch.tensor(y_val_reshaped.to_numpy()[:, None], dtype=torch.float32)
     X_test_tensor = torch.tensor(X_test_reshaped, dtype=torch.float32)
-    y_test_tensor = torch.tensor(y_test_reshaped[:, None], dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test_reshaped.to_numpy()[:, None], dtype=torch.float32)
 
-    model = LSTMModel(X_train_reshaped.shape[2], 50)
-    criterion = nn.BCELoss()
+
+######################### Create, Train, Test, and Validate LSTM Model #########################
+    model = LSTMModel(X_train_tensor.shape[-1], 50)
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+    best_val_metric = float('inf')
+    best_threshold = 0.5
+
     # Training loop
-    for epoch in range(15): # update model's weights 15 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
-        model.train()
-        optimizer.zero_grad()
+    for epoch in range(50): # update model's weights 50 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
+        model.train() # set the model to train mode.
+        optimizer.zero_grad() # reset gradients of all tensors
         outputs = model(X_train_tensor)
         loss = criterion(outputs, y_train_tensor) # how well the model is perfoming during the dataset. consistently decreasing training may be good but also may mean it's overfitting.
         loss.backward()
         optimizer.step()
 
-        # Validation
+        # Validate for hyperparameter tuning
         model.eval()
-        val_outputs = model(X_test_tensor)
-        val_loss = criterion(val_outputs, y_test_tensor) # how well does the model perform on the dataset that it hasn't seen during training. validation set.
-        print(f"Epoch {epoch+1}, Loss: {loss.item()}, Val Loss: {val_loss.item()}")
+        with torch.no_grad(): # no gradients needed for validation phase
+            val_predictions_logits = model(X_val_tensor).squeeze()
+            val_predictions = torch.sigmoid(val_predictions_logits)  # Apply sigmoid here
 
-    y_pred = model(X_test_tensor)
-    y_pred = (y_pred.detach().numpy() > 0.5).astype(int)
-    accuracy = accuracy_score(y_test_reshaped, y_pred)
-    print(f"Model Accuracy on Test Set with LSTM: {accuracy:.2f}")
+            # Ensure y val is binary
+            y_val_binary = y_val_tensor.int()
+
+            best_f1_score = 0
+            # Find the best threshold for the current epoch
+            for threshold in np.arange(0.1, 0.9, 0.01):
+                binary_predictions = (val_predictions > threshold).int()
+                binary_predictions_np = binary_predictions.numpy()
+                y_val_binary_np = y_val_binary.numpy()
+
+                # Calculate F1 score
+                current_f1_score = f1_score(y_val_binary_np, binary_predictions_np)
+                
+                # Track the best F1 score and save the threshold
+                if current_f1_score > best_f1_score:
+                    best_f1_score = current_f1_score
+                    best_threshold = threshold
+            
+        # After finding the best threshold, calculate the accuracy with this threshold
+        best_binary_predictions = (val_predictions > best_threshold).int()
+        correct_val_predictions = (best_binary_predictions == y_val_binary).float().sum()
+        val_accuracy = correct_val_predictions / y_val_binary.size(0)
+
+
+        # Print epoch results
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val FL Score: {best_f1_score:.4f}, Best Threshold: {best_threshold:.2f}")
+        
+    # Evaluation on the test set with the best threshold found
+    model.eval()
+    with torch.no_grad():
+        test_predictions = model(X_test_tensor).squeeze()
+        test_binary_predictions = (test_predictions > best_threshold).int()
+        correct_test_predictions = (test_binary_predictions == y_test_tensor).float().sum()
+        test_accuracy = correct_test_predictions / y_test_tensor.size(0)
     
-    return model
+     # Print final results
+    print(f"Final Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}")
+
+    return model, best_threshold, val_accuracy.item()
     
     
 

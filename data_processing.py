@@ -13,7 +13,7 @@ def backtest(ticker): # function to backtest and plot individual ticker based on
     raw_data = yf.download(ticker, start_date, end_date, interval='1h', auto_adjust=True)
 
     df = preprocess_data(raw_data) # df stands for dataframe
-    clf = train_model(df) # train ML model based on df
+    clf, best_threshold = train_model(df) # train ML model based on df
     clf.eval() # set to evaluation mode.
     data = bt.feeds.PandasData(dataname=df)
 
@@ -22,7 +22,7 @@ def backtest(ticker): # function to backtest and plot individual ticker based on
     # Set our desired cash start
     cerebro.broker.set_cash(100.0)
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    print(f'Running backtest on: {ticker}.')
+    print(f'Running backtest on: {ticker} with best model threshold: {best_threshold}.')
 
     # Set the commision
     cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
