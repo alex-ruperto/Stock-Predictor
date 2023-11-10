@@ -95,7 +95,7 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
         return y_pred
 
 '''
-------------------------------------------------Train Test Validate------------------------------------------------
+------------------------------------------------Train Validate Test------------------------------------------------
 '''
 def train_model(df, epochs=50):
     # Handle missing values using mean imputation
@@ -118,7 +118,7 @@ def train_model(df, epochs=50):
     best_threshold = 0.5
 
     # Training loop
-    for epoch in range(50): # update model's weights 50 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
+    for epoch in range(epochs): # update model's weights 50 times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
         model.train() # set the model to train mode.
         optimizer.zero_grad() # reset gradients of all tensors
         outputs = model(X_train_tensor)
@@ -132,7 +132,7 @@ def train_model(df, epochs=50):
             val_predictions_logits = model(X_val_tensor).squeeze()
             val_predictions = torch.sigmoid(val_predictions_logits)  # Apply sigmoid here
 
-            # Ensure y val is binary
+            # Convert the y_val_tensor into a binary value
             y_val_binary = y_val_tensor.int()
 
             best_f1_score = 0
@@ -155,24 +155,30 @@ def train_model(df, epochs=50):
         best_binary_predictions = (val_predictions > best_threshold).int()
         correct_val_predictions = (best_binary_predictions == y_val_binary_squeezed).float().sum()
         val_accuracy = correct_val_predictions / y_val_binary.size(0)
-        print(f"Correct val predictions: {correct_val_predictions}, y val binary size: {y_val_binary.size(0)}")
         
         # Print epoch results
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val FL Score: {best_f1_score:.4f}, Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}")
-        
-    # Evaluation on the test set with the best threshold found
-    model.eval()
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val F1 Score: {best_f1_score:.4f}, Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}, Correct val predictions: {correct_val_predictions}, y-val binary size: {y_val_binary.size(0)}")
+
+    # Calculate test accuracy
+    model.eval() 
     with torch.no_grad():
-        test_predictions = model(X_test_tensor).squeeze()
-        test_binary_predictions = (test_predictions > best_threshold).int()
-        correct_test_predictions = (test_binary_predictions == y_test_tensor).float().sum()
-        test_accuracy = correct_test_predictions / y_test_tensor.size(0)
-    
-    # Print final results
-    print(f"Shape of best_binary_predictions: {best_binary_predictions.shape}")
-    
+        test_predictions_logits = model(X_test_tensor).squeeze()
+        test_predictions = torch.sigmoid(test_predictions_logits)
 
-    return model, best_threshold, val_accuracy.item()
-    
-    
+        # Use best threshold determined during the training
+        best_test_predictions = (test_predictions > best_threshold).int()
 
+        # Ensure the tensors are of the same shape
+        y_test_tensor_squeezed = y_test_tensor.squeeze()
+        
+        # Calculate correct predictions
+        correct_test_predictions = (best_test_predictions == y_test_tensor_squeezed).float()
+
+        # Sum and calculate accuracy
+        num_correct_test_predictions = correct_test_predictions.sum()
+        print(f"Number of Correct Test Predictions: {num_correct_test_predictions}, Length of y_test_tensor: {len(y_test_tensor_squeezed)}")
+        test_accuracy = num_correct_test_predictions / len(y_test_tensor_squeezed)
+
+        print(f"Test Accuracy: {test_accuracy.item():.4f}")
+    
+    return model, best_threshold
