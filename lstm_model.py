@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.utils.data as data
 from torch.optim import SGD
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
@@ -10,6 +11,7 @@ from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import StandardScaler
+from torch.autograd import Variable
 import pandas_ta
 
 time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
@@ -77,7 +79,7 @@ def preprocess_data(df):
 
 # end of features
 
-def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=60):
+def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=120):
     ######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
     # Split data into training, validation, and test sets
     X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -100,28 +102,92 @@ def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=60):
     y_test_tensor = torch.tensor(y_test_reshaped.to_numpy()[:, None], dtype=torch.float32)
     return X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor
 
+class EarlyStopping:
+    def __init__(self, patience=7, delta=0):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+                            Default: 7
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+                           Default: 0
+        """
+        self.patience = patience
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+
+    def __call__(self, val_loss, model):
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+        if val_loss < self.val_loss_min:
+            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+            torch.save(model.state_dict(), 'checkpoint.pt')
+            self.val_loss_min = val_loss
+
+
 # note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
 # model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
 class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
-    def __init__(self, input_dim, hidden_dim, num_layers=2, dropout=0.3): # constructor. input_dim = size of input feature vector, hidden_dim = number of hidden units in LSTM layer.
-        super(LSTMModel, self).__init__() # call the init function from the superclass.
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True) # expects input tensors of shape (batch, seq_len, input_dim), and it outputs (batch, seq_len, hidden_dim).
-        
-        self.linear = nn.Linear(hidden_dim, 1)
-        self.sigmoid = nn.Sigmoid() # squashes the output between 0 and 1. value will always be between 0 and 1.
+    def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length, dropout_prob=0.2): # constructor
+        super().__init__() # call the init function from the superclass.
+        self.num_classes = num_classes #number of classes
+        self.num_layers = num_layers #number of layers
+        self.input_size = input_size #input size
+        self.hidden_size = hidden_size #hidden state
+        self.seq_length = seq_length #sequence length
+
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout_prob)
+
+        self.fc_1 = nn.Linear(hidden_size, 128) # fully connected first layer
+        self.bn_1 = nn.BatchNorm1d(128)
+        self.dropout_1 = nn.Dropout(dropout_prob)
+
+        # Fully Connected Output Layer
+        self.fc_n = nn.Linear(128, num_classes)
+
+        # Non-linear activation
+        self.relu = nn.ReLU()
 
     def forward(self, x): # defines forward pass of neural network.
-        lstm_out, _ = self.lstm(x)
-        # handle a batch size of 1
-        if lstm_out.dim() == 2:
-            lstm_out = lstm_out.unsqueeze(0)
-        y_pred = self.sigmoid(self.linear(lstm_out[:, -1, :]))
-        return y_pred
+        h_0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device) # hidden state
+        c_0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device) # internal state
+
+        # LSTM Layer
+        output, (hn, cn) = self.lstm(x, (h_0, c_0)) # lstm with input, hidden, and internal state
+         # Use the last sequence output for prediction
+        last_seq_output = output[:, -1, :]  # Shape: [batch_size, hidden_size]
+
+        # Fully connected layers with Batch Normalization and Dropout
+        out = self.fc_1(last_seq_output)
+        out = self.bn_1(out)
+        out = self.relu(out)
+        out = self.dropout_1(out)
+
+        # Final Output
+        out = self.fc_n(out)  
+        return out
 
 '''
 ------------------------------------------------Train Validate Test------------------------------------------------
 '''
-def train_model(df, epochs=30, batch_size=64, learning_rate=0.1):
+def train_model(df):
     # Define warm-up periods for each feature
     feature_warm_up_periods = {
         'Target': 0,
@@ -166,66 +232,76 @@ def train_model(df, epochs=30, batch_size=64, learning_rate=0.1):
 
     # Prepare the data
     X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X, y)
-    train_data = TensorDataset(X_train_tensor, y_train_tensor)
-    train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
 
 
 ######################### Create, Train, Validate and Test LSTM Model #########################
-    model = LSTMModel(X_train_tensor.shape[-1], 200)
+    num_epochs = 50 # number of epochs
+    learning_rate = 0.0001 # learning rate
+    input_size = X_train_tensor.size(-1) # number of features
+    hidden_size = 32 # number of features in hidden state
+    num_layers = 3 # number of stacked lstm layers
+    num_classes = 1 # number of output classes 
+    model = LSTMModel(num_classes, input_size, hidden_size, num_layers, X_train_tensor.shape[1])
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+    loader = data.DataLoader(data.TensorDataset(X_train_tensor, y_train_tensor), shuffle=True, batch_size=64)
+    early_stopping = EarlyStopping(patience=7, delta=0.001)
 
     # Training loop
-    for epoch in range(epochs): # update model's weights (epochs) times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
+    for epoch in range(num_epochs): # update model's weights (epochs) times. each epoch, it will start with the weights of the previous epoch. the hope is to reduce the amount of loss each time.
         model.train() # set the model to train mode.
-        for X_batch, y_batch in train_loader:
+        for X_batch, y_batch in loader:
             optimizer.zero_grad()
-            outputs = model(X_batch)
+            outputs = model(X_batch) # forward pass
             loss = criterion(outputs, y_batch)
             loss.backward()
             optimizer.step()
-        scheduler.step()
 
         # Validate for hyperparameter tuning
         model.eval()
         with torch.no_grad():
-            val_predictions_logits = model(X_val_tensor).squeeze()
-            val_predictions = torch.sigmoid(val_predictions_logits)
-            y_val_binary_np = y_val_tensor.int().numpy()
-
-            # Find the best threshold using ROC curve analysis
-            best_threshold = find_best_threshold(y_val_binary_np, val_predictions.numpy())
-
-            # Calculate accuracy using the best threshold
-            y_val_binary_squeezed = y_val_tensor.squeeze()
-            best_binary_predictions = (val_predictions > best_threshold).int()
-            correct_val_predictions = (best_binary_predictions == y_val_binary_squeezed).float().sum()
-            val_accuracy = correct_val_predictions / y_val_binary_squeezed.size(0)
+            val_predictions = model(X_val_tensor)
+            val_rmse = torch.sqrt(criterion(torch.sigmoid(val_predictions), y_val_tensor)).item()
+            val_accuracy = ((torch.sigmoid(val_predictions) > 0.5) == y_val_tensor).float().mean().item()
         
-        # Print epoch results
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}, Val Accuracy: {val_accuracy:.4f}, Best Threshold: {best_threshold:.2f}, Correct val predictions: {correct_val_predictions}, y-val binary size: {y_val_binary_squeezed.size(0)}")
+        # Note: RMSE is the Root Mean Square Error. Train measures how well the model fits the data it was trained on. Test RMSE is how well it is expected to perform on unseen data.
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item():.4f}, Val RMSE: {val_rmse:.4f}, Val Accuracy: {val_accuracy:.4f}")
 
-    # Calculate test accuracy
-    model.eval() 
+        scheduler.step()
+
+        # Call early stopping
+        early_stopping(loss, model)
+
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+
+
+    # Load the last checkpoint with the best model
+    model.load_state_dict(torch.load('checkpoint.pt'))
+    # Calculate Test accuracy and RMSE
+    model.eval()
     with torch.no_grad():
-        test_predictions_logits = model(X_test_tensor).squeeze()
-        test_predictions = torch.sigmoid(test_predictions_logits)
-
-        # Use best threshold determined during the training
-        best_test_predictions = (test_predictions > best_threshold).int()
-
-        # Ensure the tensors are of the same shape
+        test_predictions = model(X_test_tensor).squeeze()
+        # Ensure that both predictions and actual values are of the same dimension
         y_test_tensor_squeezed = y_test_tensor.squeeze()
-        
-        # Calculate correct predictions
-        correct_test_predictions = (best_test_predictions == y_test_tensor_squeezed).float()
 
-        # Sum and calculate accuracy
-        num_correct_test_predictions = correct_test_predictions.sum()
-        print(f"Number of Correct Test Predictions: {num_correct_test_predictions}, Length of y_test_tensor: {len(y_test_tensor_squeezed)}")
-        test_accuracy = num_correct_test_predictions / len(y_test_tensor_squeezed)
+        # Calculate RMSE
+        test_rmse = torch.sqrt(criterion(torch.sigmoid(test_predictions), y_test_tensor_squeezed)).item()
 
-        print(f"Test Accuracy: {test_accuracy.item():.4f}")
+         # Calculate accuracy
+        test_accuracy = ((torch.sigmoid(test_predictions) > 0.5) == y_test_tensor_squeezed).float().mean().item()
+
+    # Extract the first 100 predicted and actual values
+    first_100_predictions = (torch.sigmoid(test_predictions) > 0.5).int().numpy()[:100]
+    first_100_actual = y_test_tensor_squeezed.numpy()[:100]
+
+    # Print the RMSE, test accuracy, and first R100 predictions and actual values
+    print(f"Test RMSE: {test_rmse:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    print("First 100 Predictions:", first_100_predictions)
+    print("First 100 Actual Values:", first_100_actual)
     
-    return model, best_threshold
+
+
+    return model
