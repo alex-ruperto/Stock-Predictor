@@ -145,7 +145,7 @@ class EarlyStopping:
 # note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
 # model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
 class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
-    def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length, dropout_prob=0.2): # constructor
+    def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length, dropout_prob=0.2, bidirectional=True): # constructor
         super().__init__() # call the init function from the superclass.
         self.num_classes = num_classes #number of classes
         self.num_layers = num_layers #number of layers
@@ -155,7 +155,9 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
 
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout_prob)
 
-        self.fc_1 = nn.Linear(hidden_size, 128) # fully connected first layer
+        self.fc_1 = nn.Linear(hidden_size, 256) # fully connected first layer.the second number represents how many neurons
+        self.fc_2 = nn.Linear(256, 128)  # fully connected second layer
+        self.fc_n = nn.Linear(128, num_classes)
         self.bn_1 = nn.BatchNorm1d(128)
         self.dropout_1 = nn.Dropout(dropout_prob)
 
@@ -176,9 +178,14 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
 
         # Fully connected layers with Batch Normalization and Dropout
         out = self.fc_1(last_seq_output)
+        out = self.relu(out)
+        out = self.dropout_1(out)
+        
+        out = self.fc_2(out)
         out = self.bn_1(out)
         out = self.relu(out)
         out = self.dropout_1(out)
+        
 
         # Final Output
         out = self.fc_n(out)  
@@ -236,16 +243,16 @@ def train_model(df):
 
 ######################### Create, Train, Validate and Test LSTM Model #########################
     num_epochs = 50 # number of epochs
-    learning_rate = 0.0001 # learning rate
+    learning_rate = 0.00001 # learning rate
     input_size = X_train_tensor.size(-1) # number of features
-    hidden_size = 32 # number of features in hidden state
+    hidden_size = 300 # number of features in hidden state
     num_layers = 3 # number of stacked lstm layers
     num_classes = 1 # number of output classes 
     model = LSTMModel(num_classes, input_size, hidden_size, num_layers, X_train_tensor.shape[1])
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-    loader = data.DataLoader(data.TensorDataset(X_train_tensor, y_train_tensor), shuffle=True, batch_size=64)
+    loader = data.DataLoader(data.TensorDataset(X_train_tensor, y_train_tensor), shuffle=True, batch_size=128)
     early_stopping = EarlyStopping(patience=7, delta=0.001)
 
     # Training loop
@@ -302,6 +309,4 @@ def train_model(df):
     print("First 100 Predictions:", first_100_predictions)
     print("First 100 Actual Values:", first_100_actual)
     
-
-
     return model
