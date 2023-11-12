@@ -7,11 +7,12 @@ import torch.utils.data as data
 from torch.optim import SGD
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import f1_score
+from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import StandardScaler
 from torch.autograd import Variable
+from imblearn.over_sampling import SMOTE
 import pandas_ta
 
 time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
@@ -79,11 +80,18 @@ def preprocess_data(df):
 
 # end of features
 
-def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=120):
+def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=60):
     ######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
     # Split data into training, validation, and test sets
-    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=test_size, random_state=random_state)  
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state, shuffle=False)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=test_size, random_state=random_state, shuffle=False)
+
+    # Normalize data
+    mean = X_train.mean(axis=0)
+    std = X_train.std(axis=0)
+    X_train = (X_train - mean) / std
+    X_val = (X_val - mean) / std
+    X_test = (X_test - mean) / std
 
     # Reshape data for LSTM
     X_train_reshaped = np.array([X_train[i-lookback:i] for i in range(lookback, X_train.shape[0])])
@@ -145,51 +153,50 @@ class EarlyStopping:
 # note: a tensor is a data structure that is a multi-dimensional array that can hold scalars, vectors, matrices, or higher-dimensional data.
 # model. Read sequence of feature vectors and process them with the LSTM layer. Produce a singlee 0 and 1 for each input sequence using the fully connected layer and sigmoid activation function.
 class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
-    def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length, dropout_prob=0.2, bidirectional=True): # constructor
+    def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length): # constructor
         super().__init__() # call the init function from the superclass.
         self.num_classes = num_classes #number of classes
         self.num_layers = num_layers #number of layers
         self.input_size = input_size #input size
         self.hidden_size = hidden_size #hidden state
         self.seq_length = seq_length #sequence length
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print(self.device)
+        self.dropout = nn.Dropout(0.5)
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
 
-        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout_prob)
-
-        self.fc_1 = nn.Linear(hidden_size, 256) # fully connected first layer.the second number represents how many neurons
-        self.fc_2 = nn.Linear(256, 128)  # fully connected second layer
-        self.fc_n = nn.Linear(128, num_classes)
-        self.bn_1 = nn.BatchNorm1d(128)
-        self.dropout_1 = nn.Dropout(dropout_prob)
-
-        # Fully Connected Output Layer
-        self.fc_n = nn.Linear(128, num_classes)
-
-        # Non-linear activation
-        self.relu = nn.ReLU()
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_size, num_classes),
+            nn.ReLU()
+        )  
 
     def forward(self, x): # defines forward pass of neural network.
-        h_0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device) # hidden state
-        c_0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device) # internal state
+        x = x.to(self.device)
+        h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(self.device) # hidden state
+        c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(self.device) # internal state
 
-        # LSTM Layer
-        output, (hn, cn) = self.lstm(x, (h_0, c_0)) # lstm with input, hidden, and internal state
-         # Use the last sequence output for prediction
-        last_seq_output = output[:, -1, :]  # Shape: [batch_size, hidden_size]
-
-        # Fully connected layers with Batch Normalization and Dropout
-        out = self.fc_1(last_seq_output)
-        out = self.relu(out)
-        out = self.dropout_1(out)
-        
-        out = self.fc_2(out)
-        out = self.bn_1(out)
-        out = self.relu(out)
-        out = self.dropout_1(out)
-        
-
-        # Final Output
-        out = self.fc_n(out)  
+        # Propagate input through LSTM
+        out, (h_out, _) = self.lstm(x, (h_0, c_0))
+        out = out[:, -1, :]
+        self.dropout(out) # apply dropout
+        out = self.fc(out) # 1 output
         return out
+
+def dynamically_introduce_features(df, feature_periods):
+        max_warm_up = max(feature_periods.values())
+        dynamic_df = pd.DataFrame(index=df.index[max_warm_up:])
+
+        for feature, warm_up in feature_periods.items():
+            dynamic_df[feature] = df[feature].iloc[warm_up:]
+        
+        return dynamic_df.dropna()
+
+def find_best_threshold(y_true, y_scores):
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    optimal_idx = np.argmax(tpr - fpr)
+    optimal_threshold = thresholds[optimal_idx]
+
+    return optimal_threshold  # Return only the threshold value
 
 '''
 ------------------------------------------------Train Validate Test------------------------------------------------
@@ -216,43 +223,33 @@ def train_model(df):
         'ATR': int(14 * time_interval)
     }
 
-    def dynamically_introduce_features(df, feature_periods):
-        max_warm_up = max(feature_periods.values())
-        dynamic_df = pd.DataFrame(index=df.index[max_warm_up:])
-
-        for feature, warm_up in feature_periods.items():
-            dynamic_df[feature] = df[feature].iloc[warm_up:]
-        
-        return dynamic_df.dropna()
-
-    def find_best_threshold(y_true, y_scores):
-        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-        optimal_idx = np.argmax(tpr - fpr)
-        optimal_threshold = thresholds[optimal_idx]
-
-        return optimal_threshold  # Return only the threshold value
-    
     df_dynamic = dynamically_introduce_features(df, feature_warm_up_periods)
     
     X = df_dynamic[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line', 'EMA1', 'EMA2', 'OBV_Scaled', 'VWAP', 'Volatility', 'ROC', 'D_Line']]
     y = df_dynamic['Target']
+    smote = SMOTE(sampling_strategy='minority')
+    X_smote, y_smote = smote.fit_resample(X, y)
 
     # Prepare the data
-    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X, y)
-
+    lookback = 60 # number of previous time steps to use as input variables to predict the next time period
+    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X_smote,y_smote, test_size=0.2, random_state=42, lookback=lookback)
+    num_epochs = 64 # number of epochs
+    learning_rate = 0.01 # learning rate
+    input_size = X_train_tensor.size(-1) # number of features
+    hidden_size = 2000 # number of features in hidden state
+    num_layers = 3 # number of stacked lstm layers
+    num_classes = 1 # number of output classes
+    batch_size = 64   # number of samples in each batch 
 
 ######################### Create, Train, Validate and Test LSTM Model #########################
-    num_epochs = 50 # number of epochs
-    learning_rate = 0.00001 # learning rate
-    input_size = X_train_tensor.size(-1) # number of features
-    hidden_size = 300 # number of features in hidden state
-    num_layers = 3 # number of stacked lstm layers
-    num_classes = 1 # number of output classes 
+    
     model = LSTMModel(num_classes, input_size, hidden_size, num_layers, X_train_tensor.shape[1])
-    criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
+    model = model.to(model.device)
+    weights = torch.tensor([0.5]).to(model.device)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate) 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-    loader = data.DataLoader(data.TensorDataset(X_train_tensor, y_train_tensor), shuffle=True, batch_size=128)
+    loader = data.DataLoader(data.TensorDataset(X_train_tensor, y_train_tensor), shuffle=True, batch_size=batch_size)
     early_stopping = EarlyStopping(patience=7, delta=0.001)
 
     # Training loop
@@ -261,6 +258,9 @@ def train_model(df):
         for X_batch, y_batch in loader:
             optimizer.zero_grad()
             outputs = model(X_batch) # forward pass
+            probabilities = torch.sigmoid(outputs)
+            predictions = (probabilities > 0.6).float()  # Adjust the threshold here
+            y_batch = y_batch.to(model.device)
             loss = criterion(outputs, y_batch)
             loss.backward()
             optimizer.step()
@@ -268,12 +268,16 @@ def train_model(df):
         # Validate for hyperparameter tuning
         model.eval()
         with torch.no_grad():
-            val_predictions = model(X_val_tensor)
+            y_val_tensor = y_val_tensor.to(model.device)
+            val_predictions = model(X_val_tensor).to(model.device)
+            val_predictions_binary = (torch.sigmoid(val_predictions) > 0.5).int()
+            y_val_numpy = y_val_tensor.cpu().numpy()
+            val_precision, val_recall ,val_f1, _ = precision_recall_fscore_support(y_val_numpy, val_predictions_binary.cpu().numpy(), average='binary', zero_division=0)
             val_rmse = torch.sqrt(criterion(torch.sigmoid(val_predictions), y_val_tensor)).item()
             val_accuracy = ((torch.sigmoid(val_predictions) > 0.5) == y_val_tensor).float().mean().item()
-        
+
         # Note: RMSE is the Root Mean Square Error. Train measures how well the model fits the data it was trained on. Test RMSE is how well it is expected to perform on unseen data.
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item():.4f}, Val RMSE: {val_rmse:.4f}, Val Accuracy: {val_accuracy:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item():.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, RMSE: {val_rmse:.4f}, Accuracy: {val_accuracy:.4f}")
 
         scheduler.step()
 
@@ -284,28 +288,30 @@ def train_model(df):
             print("Early stopping")
             break
 
-
     # Load the last checkpoint with the best model
     model.load_state_dict(torch.load('checkpoint.pt'))
-    # Calculate Test accuracy and RMSE
+    # Calculate Test F1 Score and RMSE
     model.eval()
     with torch.no_grad():
         test_predictions = model(X_test_tensor).squeeze()
+        test_predictions = test_predictions.to(model.device)
         # Ensure that both predictions and actual values are of the same dimension
-        y_test_tensor_squeezed = y_test_tensor.squeeze()
+        y_test_tensor_squeezed = y_test_tensor.squeeze().to(model.device)
 
         # Calculate RMSE
         test_rmse = torch.sqrt(criterion(torch.sigmoid(test_predictions), y_test_tensor_squeezed)).item()
 
-         # Calculate accuracy
-        test_accuracy = ((torch.sigmoid(test_predictions) > 0.5) == y_test_tensor_squeezed).float().mean().item()
+        # Calculate F1 Score
+        test_predictions_binary = (torch.sigmoid(test_predictions) > 0.5).int()
+        y_test_numpy = y_test_tensor_squeezed.cpu().numpy()
+        test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y_test_numpy, test_predictions_binary.cpu().numpy(), average='binary')
 
     # Extract the first 100 predicted and actual values
-    first_100_predictions = (torch.sigmoid(test_predictions) > 0.5).int().numpy()[:100]
-    first_100_actual = y_test_tensor_squeezed.numpy()[:100]
+    first_100_predictions = test_predictions_binary.cpu().numpy()[:100]
+    first_100_actual = y_test_numpy[:100]
 
-    # Print the RMSE, test accuracy, and first R100 predictions and actual values
-    print(f"Test RMSE: {test_rmse:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    # Print the RMSE, test F1 Score, and first R100 predictions and actual values
+    print(f"Test RMSE: {test_rmse:.4f}, Test F1 Score: {test_f1:.4f}")
     print("First 100 Predictions:", first_100_predictions)
     print("First 100 Actual Values:", first_100_actual)
     
