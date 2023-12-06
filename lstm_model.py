@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import StandardScaler
 from torch.autograd import Variable
-from imblearn.over_sampling import SMOTE
 import pandas_ta
 
 time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
@@ -20,23 +19,23 @@ time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in
 # features
 def preprocess_data(df):
     # compare next day closing price to current day. convert boolean values to integer values
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
+    df['Target'] = (df['close'].shift(-1) > df['close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
     # Simple Moving Averages 1 and 2
-    df['SMA1'] = pandas_ta.sma(df['Close'], length=50*time_interval)
-    df['SMA2'] = pandas_ta.sma(df['Close'], length=200*time_interval)
+    df['SMA1'] = pandas_ta.sma(df['close'], length=50*time_interval)
+    df['SMA2'] = pandas_ta.sma(df['close'], length=200*time_interval)
     
     # Relative Strength Index (RSI)
-    df['RSI'] = pandas_ta.rsi(df['Close'], length=14*time_interval)
+    df['RSI'] = pandas_ta.rsi(df['close'], length=14*time_interval)
 
     # Moving Average Convergence Divergence (MACD)
-    macd = pandas_ta.macd(df['Close'], fast=12*time_interval, slow=26*time_interval, signal=9*time_interval)
+    macd = pandas_ta.macd(df['close'], fast=12*time_interval, slow=26*time_interval, signal=9*time_interval)
     macd_line_col = macd.columns[0]  # MACD line is typically the first column
     signal_line_col = macd.columns[2]  # Signal line is typically the third column
     df['MACD_Line'] = macd[macd_line_col]
     df['Signal_Line'] = macd[signal_line_col]
 
     # Bollinger Bands
-    bollinger = pandas_ta.bbands(df['Close'], length=20*time_interval, std=2)
+    bollinger = pandas_ta.bbands(df['close'], length=20*time_interval, std=2)
     upper_band_col = bollinger.columns[0]  # Upper band is typically the first column
     lower_band_col = bollinger.columns[2]  # Lower band is typically the third column
     df['Upper_Bollinger'] = bollinger[upper_band_col]
@@ -46,7 +45,7 @@ def preprocess_data(df):
     # Ensure k and d are integers
     k = int(14 * time_interval)
     d = int(3 * time_interval)
-    stoch = pandas_ta.stoch(df['High'], df['Low'], df['Close'], k=k, d=d)
+    stoch = pandas_ta.stoch(df['high'], df['low'], df['close'], k=k, d=d)
     # 14 is the look back period, 3 is period for %K smoothing, 3 for %D line. %D is moving average of %K
     # multiply those numbers by the time interval
     k_line_col = stoch.columns[0]  # %K line is typically the first column
@@ -55,26 +54,26 @@ def preprocess_data(df):
     df['D_Line'] = stoch[d_line_col]
 
     # Exponential Moving Averages
-    df['EMA1'] = pandas_ta.ema(df['Close'], length=12*time_interval)
-    df['EMA2'] = pandas_ta.ema(df['Close'], length=26*time_interval)
+    df['EMA1'] = pandas_ta.ema(df['close'], length=12*time_interval)
+    df['EMA2'] = pandas_ta.ema(df['close'], length=26*time_interval)
 
     # On-Balance Volume
-    df['OBV'] = pandas_ta.obv(df['Close'], df['Volume'])
+    df['OBV'] = pandas_ta.obv(df['close'], df['volume'])
     scaler = StandardScaler()
     df['OBV_Scaled'] = scaler.fit_transform(df[['OBV']])
     df = df.drop('OBV', axis=1)
 
     # Volume-weighted Average Price (VWAP)
-    df['VWAP'] = pandas_ta.vwap(high=df['High'], low=df['Low'], close=df['Close'], volume=df['Volume'], length=14*time_interval)
+    df['VWAP'] = pandas_ta.vwap(high=df['high'], low=df['low'], close=df['close'], volume=df['volume'], length=14*time_interval)
 
     # Historical Volatility
-    df['Volatility'] = pandas_ta.stdev(df['Close'], length=14*time_interval)
+    df['Volatility'] = pandas_ta.stdev(df['close'], length=14*time_interval)
 
     # Price Rate of Change
-    df['ROC'] = pandas_ta.roc(df['Close'], length=10*time_interval)
+    df['ROC'] = pandas_ta.roc(df['close'], length=10*time_interval)
 
     # Average True Range
-    df['ATR'] = pandas_ta.atr(df['High'], df['Low'], df['Close'], length=14*time_interval)
+    df['ATR'] = pandas_ta.atr(df['high'], df['low'], df['close'], length=14*time_interval)
 
     return df
 
@@ -227,12 +226,9 @@ def train_model(df):
     
     X = df_dynamic[['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line', 'EMA1', 'EMA2', 'OBV_Scaled', 'VWAP', 'Volatility', 'ROC', 'D_Line']]
     y = df_dynamic['Target']
-    smote = SMOTE(sampling_strategy='minority')
-    X_smote, y_smote = smote.fit_resample(X, y)
-
     # Prepare the data
     lookback = 60 # number of previous time steps to use as input variables to predict the next time period
-    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X_smote,y_smote, test_size=0.2, random_state=42, lookback=lookback)
+    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, X_test_tensor, y_test_tensor = prepare_data_for_lstm(X,y, test_size=0.2, random_state=42, lookback=lookback)
     num_epochs = 64 # number of epochs
     learning_rate = 0.01 # learning rate
     input_size = X_train_tensor.size(-1) # number of features

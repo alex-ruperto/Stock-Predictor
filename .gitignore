@@ -14,4 +14,4 @@ __pycache__/
 _.DS_Store
 trading-bot-env/
 config.py
-alpcaconfig.py
+alpacaconfig.py
