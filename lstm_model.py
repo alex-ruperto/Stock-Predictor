@@ -75,6 +75,7 @@ def preprocess_data(df):
     # Average True Range
     df['ATR'] = pandas_ta.atr(df['high'], df['low'], df['close'], length=14*time_interval)
 
+
     return df
 
 # end of features
@@ -82,6 +83,9 @@ def preprocess_data(df):
 def prepare_data_for_lstm(X, y, test_size=0.25, random_state=42, lookback=60):
     ######################### Split Data into Training and Test Sets then Reshape for LSTM #########################
     # Split data into training, validation, and test sets
+    if X.empty or len(y) == 0:
+            raise ValueError("Input DataFrame X or target array y is empty.")
+
     X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state, shuffle=False)
     X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=test_size, random_state=random_state, shuffle=False)
 
