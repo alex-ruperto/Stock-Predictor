@@ -7,8 +7,12 @@ def generate_figures_for_tickers(tickers):
     figures = {}
     for ticker in tickers:
         data = backtest(ticker)
+        print(f"Data for {ticker}:")
+        print(data)
+
         fig = generate_figure_for_ticker(ticker, *data) # pass in ticker along with all the returned 'data' from the backtest.
         figures[ticker] = fig
+        
     return figures
 
 def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, macd, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y):
@@ -25,7 +29,7 @@ def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, 
         go.Scatter(x=dates, y=np.array(sma_short).tolist(), mode='lines', name='50-day SMA', legend='legend1'), row=1,
         col=1)  # Plot 20-day SMA on row 1 col 1
     fig.add_trace(
-        go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='200-day SMA', legend='legend1'), row=1,
+        go.Scatter(x=dates, y=np.array(sma_long).tolist(), mode='lines', name='100-day SMA', legend='legend1'), row=1,
         col=1)  # Plot 100-day SMA on row 1 col 1
     # Plot the buys on row 1 col 1
     fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',

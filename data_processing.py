@@ -9,7 +9,7 @@ alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url
 
 def backtest(ticker): # backtest function for an individual stock
     # get data from alpaca
-    stock_data = alpaca_api.get_bars(ticker, TimeFrame.Hour, start="2020-01-01", end="2023-01-01").df
+    stock_data = alpaca_api.get_bars(ticker, TimeFrame.Hour, start="2022-06-01", end="2023-01-01").df
     if stock_data.empty:
         raise ValueError("No data fetched from Alpaca.")
     
@@ -32,11 +32,13 @@ def backtest(ticker): # backtest function for an individual stock
 
     # Extract strategy data for analysis
     dates = stock_data.index.tolist()
-    closes = stock_data['close'].tolist()
-    sma_short = [strategy.sma_short.lines.sma[index] for index in range(len(dates))]
-    sma_long = [strategy.sma_long.lines.sma[index] for index in range(len(dates))]
-    rsi = [strategy.rsi.lines.rsi[index] for index in range(len(dates))]
-    macd = [strategy.macd.lines.macd[index] for index in range(len(dates))]
+    closes = stock_data['Close'].tolist()
+    sma_short = [strategy.sma_short[0] for _ in dates]
+    sma_long = [strategy.sma_long[0] for _ in dates] 
+    rsi = [strategy.rsi[0] for _ in dates]             
+    volatility = [strategy.volatility[0] for _ in dates]  
+    roc = [strategy.roc[0] for _ in dates]               
+    atr = [strategy.atr[0] for _ in dates]
 
     # Extract account and trading values
     cash_values = strategy.cash_values
@@ -49,7 +51,7 @@ def backtest(ticker): # backtest function for an individual stock
     sells_x = [bt.num2date(dt) for dt in strategy.sell_dates]
     sells_y = [closes[dates.index(date)] for date in sells_x if date in dates]
 
-    return dates, closes, sma_short, sma_long, rsi, macd, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
+    return dates, closes, sma_short, sma_long, rsi, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 
 class CustomData(bt.feeds.PandasData):
     lines = ('trade_count', 'vwap',)
