@@ -9,28 +9,33 @@ time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in
 
 # features
 def preprocess_data(df):
+    # Check if the column names are in lower case. If they are, convert them to upper case.
+    df.columns = map(str.capitalize, df.columns)
+
     # compare next day closing price to current day. convert boolean values to integer values
-    df['Target'] = (df['close'].shift(-1) > df['close']).astype(int) # df['Close] is closing price for each candle. target is to get next close higher than current.
+    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next Close higher than current.
     # Simple Moving Averages 1 and 2
-    df['SMA1'] = pandas_ta.sma(df['close'], length=50*time_interval)
-    df['SMA2'] = pandas_ta.sma(df['close'], length=200*time_interval)
+    df['SMA1'] = pandas_ta.sma(df['Close'], length=50*time_interval)
+    df['SMA2'] = pandas_ta.sma(df['Close'], length=100*time_interval)
     
     # Relative Strength Index (RSI)
-    df['RSI'] = pandas_ta.rsi(df['close'], length=14*time_interval)
+    df['RSI'] = pandas_ta.rsi(df['Close'], length=14*time_interval)
 
     # Exponential Moving Averages
-    df['EMA1'] = pandas_ta.ema(df['close'], length=12*time_interval)
-    df['EMA2'] = pandas_ta.ema(df['close'], length=26*time_interval)
+    df['EMA1'] = pandas_ta.ema(df['Close'], length=12*time_interval)
+    df['EMA2'] = pandas_ta.ema(df['Close'], length=26*time_interval)
 
     # Historical Volatility
-    df['Volatility'] = pandas_ta.stdev(df['close'], length=14*time_interval)
+    df['Volatility'] = pandas_ta.stdev(df['Close'], length=14*time_interval)
 
     # Price Rate of Change
-    df['ROC'] = pandas_ta.roc(df['close'], length=10*time_interval)
+    df['ROC'] = pandas_ta.roc(df['Close'], length=10*time_interval)
 
     # Average True Range
-    df['ATR'] = pandas_ta.atr(df['high'], df['low'], df['close'], length=14*time_interval)
+    df['ATR'] = pandas_ta.atr(df['High'], df['Low'], df['Close'], length=14*time_interval)
 
+    # Fill any NaN values with the mean
+    df = df.fillna(df.mean())
 
     return df
 

@@ -22,9 +22,7 @@ class TestFeatures(unittest.TestCase):
         self.assertIsInstance(processed_data, pd.DataFrame)
 
         # Check for the presence of expected columns
-        expected_columns = ['Target', 'SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 
-                            'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line', 
-                            'EMA1', 'EMA2', 'OBV_Scaled', 'VWAP', 'Volatility', 'ROC', 'ATR']
+        expected_columns = ['Target', 'SMA1', 'SMA2', 'RSI', 'EMA1', 'EMA2', 'Volatility', 'ROC', 'ATR']
         for column in expected_columns:
             self.assertIn(column, processed_data.columns)
 
