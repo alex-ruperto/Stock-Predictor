@@ -19,24 +19,25 @@ class MLStrategy (BaseStrategy):
         self.rolling_window = deque (maxlen=60)
 
         # Simple Moving Average
-        self.sma_short = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
-        self.sma_long = bt.indicators.SimpleMovingAverage(self.data.close, period=200)
+        self.sma1 = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
+        self.sma2 = bt.indicators.SimpleMovingAverage(self.data.close, period=100)
 
         # RSI
         self.rsi = bt.indicators.RelativeStrengthIndex(period=14)
         
-        # MACD
-        self.macd = bt.indicators.MACD(self.data.close, period_me1=12, period_me2=26, period_signal=9)
-        
-        # Bollinger Bands
-        self.bollinger = bt.indicators.BollingerBands(self.data.close, period=20, devfactor=2)
-        self.upper_bollinger = self.bollinger.lines.top
-        self.lower_bollinger = self.bollinger.lines.bot
+        # EMA
+        self.ema1 = bt.indicators.EMA(self.data.close, period=12)
+        self.ema2 = bt.indicators.EMA(self.data.close, period=26)       
 
-        # Stochastic Oscillator
-        self.stochastic = bt.indicators.Stochastic(self.data)
-        self.k_line = self.stochastic.lines.percK
-        self.d_line = self.stochastic.lines.percD
+        # Volatility
+        self.volatility = bt.indicators.StandardDeviation(self.data.close, period=14)
+
+        # Price Rate of Change
+        self.roc = bt.indicators.RateOfChange(self.data.close, period=10)
+
+        # Average True Range
+        self.atr = bt.indicators.AverageTrueRange(self.data, period=14) 
+        
     
     def prenext(self): # this will be called before next method. for all data points before long SMA minimum period.
         self.add_cash()
@@ -53,8 +54,21 @@ class MLStrategy (BaseStrategy):
             self.just_rebalanced = True
         
         current_data = [
-            self.sma_short[0], self.sma_long[0], self.rsi[0], self.macd.macd[0], self.macd.signal[0],
-            self.upper_bollinger[0], self.lower_bollinger[0], self.k_line[0], self.d_line[0]
+            self.data.close[0], 
+            self.data.high[0], 
+            self.data.low[0], 
+            self.data.trade_count[0],
+            self.data.open[0],
+            self.data.volume[0],
+            self.data.vwap[0],
+            self.sma1[0], 
+            self.sma2[0],
+            self.rsi[0],
+            self.ema1[0],
+            self.ema2[0],
+            self.volatility[0],
+            self.roc[0],
+            self.atr[0]
         ]
         
         self.rolling_window.append(current_data)
@@ -62,22 +76,27 @@ class MLStrategy (BaseStrategy):
         prediction = None
 
         if len(self.rolling_window) == 60:
-            df = pd.DataFrame(self.rolling_window, columns=['SMA1', 'SMA2', 'RSI', 'MACD_Line', 'Signal_Line', 'Upper_Bollinger', 'Lower_Bollinger', 'K_Line', 'D_Line'])
-            input_data = torch.tensor(df.values.reshape(1, 60, len(df.columns)), dtype=torch.float32)
-            with torch.no_grad(): # don't compute gradients during inference to save memory and speed up predictions
-                prediction = self.p.model(input_data)
-                self.predictions.append(1 if prediction > 0.5 else 0)  # Assuming 1 is for "price will go up" and 0 otherwise
-                # Capture the actual movement in the next timestep (up or down)
+            df = pd.DataFrame(self.rolling_window, columns=[
+                'Close', 'High', 'Low', 'Trade_count', 'Open', 'Volume', 'Vwap',
+                'SMA1', 'SMA2', 'RSI', 'EMA1', 'EMA2', 
+                'Volatility', 'ROC', 'ATR'
+            ])
+            # Ensure DataFrame is used directly for prediction, maintaining feature names
+            with torch.no_grad():  # don't compute gradients during inference
+                prediction = self.p.model.predict(df.iloc[-1:])  # Use DataFrame directly
+                self.predictions.append(1 if prediction > 0.5 else 0)
                 current_close = self.data.close[0]
                 previous_close = self.previous_close if self.previous_close is not None else current_close
-                movement = 1 if previous_close < current_close else 0 # movement is 1 if previous is less than current. otherwise, it's 0.
+                movement = 1 if previous_close < current_close else 0
                 self.actual_movements.append(movement)
         
         if prediction is not None and prediction.item() > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
+            print("Buying on " + str(bt.num2date(self.data.datetime[0])))
             self.buy()
         elif prediction is not None and self.position.size > 0 and prediction.item() < 0.5:
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
+            print("Selling on " + str(bt.num2date(self.data.datetime[0])))	
             self.sell() 
         
         self.update_lists()

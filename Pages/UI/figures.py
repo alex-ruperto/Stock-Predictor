@@ -34,27 +34,27 @@ def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, 
     fig.add_trace(
         go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
                    legend='legend1'), row=1, col=1)  
-    # Second Plot (RSI)
-    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend2'),
-                  row=2, col=1)  # Plot close price on row 2 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(rsi).tolist(), mode='lines', name='RSI', legend='legend2'),
-                  row=2, col=1)  # Plot close price on row 2 col 1
-    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
-                             legend='legend2'), row=2, col=1)  # Plot the buys on row 2 col 1
-    fig.add_trace(
-        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
-                   legend='legend2'), row=2, col=1)  # Plot the sells on row 2 col 1
+    # # Second Plot (RSI)
+    # fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend2'),
+    #               row=2, col=1)  # Plot close price on row 2 col 1
+    # fig.add_trace(go.Scatter(x=dates, y=np.array(rsi).tolist(), mode='lines', name='RSI', legend='legend2'),
+    #               row=2, col=1)  # Plot close price on row 2 col 1
+    # fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
+    #                          legend='legend2'), row=2, col=1)  # Plot the buys on row 2 col 1
+    # fig.add_trace(
+    #     go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
+    #                legend='legend2'), row=2, col=1)  # Plot the sells on row 2 col 1
     
-    # Third Plot (MACD)
-    fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend3'),
-                  row=3, col=1)  # Plot close price on row 3 col 1
-    fig.add_trace(go.Scatter(x=dates, y=np.array(macd).tolist(), mode='lines', name='MACD', legend='legend3'),
-                  row=3, col=1)  # Plot close price on row 3 col 1
-    fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
-                             legend='legend3'), row=3, col=1)  # Plot the buys on row 3 col 1
-    fig.add_trace(
-        go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
-                   legend='legend3'), row=3, col=1)  # Plot the sells on row 2 col 1
+    # # Third Plot (MACD)
+    # fig.add_trace(go.Scatter(x=dates, y=np.array(closes).tolist(), mode='lines', name='Close Price', legend='legend3'),
+    #               row=3, col=1)  # Plot close price on row 3 col 1
+    # fig.add_trace(go.Scatter(x=dates, y=np.array(macd).tolist(), mode='lines', name='MACD', legend='legend3'),
+    #               row=3, col=1)  # Plot close price on row 3 col 1
+    # fig.add_trace(go.Scatter(x=buys_x, y=buys_y, mode='markers', marker=dict(color='green', size=15), name='Buy Order',
+    #                          legend='legend3'), row=3, col=1)  # Plot the buys on row 3 col 1
+    # fig.add_trace(
+    #     go.Scatter(x=sells_x, y=sells_y, mode='markers', marker=dict(color='red', size=15), name='Sell Order',
+    #                legend='legend3'), row=3, col=1)  # Plot the sells on row 2 col 1
 
     # Fourth Plot (Portfolio Value)
     fig.add_trace(

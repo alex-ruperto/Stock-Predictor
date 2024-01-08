@@ -1,70 +1,59 @@
-import yfinance as yf
 import backtrader as bt
-from lstm_model import train_model
-from lstm_model import preprocess_data
+import alpaca_trade_api as tradeapi
+from alpaca_trade_api import TimeFrame
+import alpacaconfig as config
+from random_forest_model import train_random_forest_model
 from Strategies.MLStrategy import MLStrategy
-from datetime import datetime, timedelta
 
-def backtest(ticker): # function to backtest and plot individual ticker based on strategy
-    cerebro = bt.Cerebro()
-    # Fetch historical data
-    start_date, end_date = calculate_dates()
-    print(f'Downloading data for: {ticker}.')
-    raw_data = yf.download(ticker, start_date, end_date, interval='1h', auto_adjust=True)
+alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
 
-    df = preprocess_data(raw_data) # df stands for dataframe
-    clf, best_threshold = train_model(df) # train ML model based on df
-    clf.eval() # set to evaluation mode.
-    data = bt.feeds.PandasData(dataname=df)
-
-    cerebro.adddata(data)  # add datafeed to cerebro
-    cerebro.addstrategy(MLStrategy, model=clf)  # use SMACrossover strategy for the backtest.
-    # Set our desired cash start
-    cerebro.broker.set_cash(100.0)
-    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    print(f'Running backtest on: {ticker} with best model threshold: {best_threshold}.')
-
-    # Set the commision
-    cerebro.broker.setcommission(commission=0.001)  # 0.1% commission on trades
-
-    # run cerebro and store it into strategy.
-    strategy = cerebro.run()[0]
-    # Print out the final result
-    print('Ending Portfolio Value: %.2f\n' % cerebro.broker.getvalue())
-    print(f"Total Predictions: {len(strategy.predictions)}")
-    total_correct_predictions = 0
-    print(strategy.actual_movements[:30])
-    print(strategy.predictions[:30])
-    for prediction, actual in zip(strategy.predictions, strategy.actual_movements):
-        if prediction == actual:
-            total_correct_predictions += 1
-
-    print(f"Total Correct Predictions: {total_correct_predictions}")
-    accuracy = total_correct_predictions / len(strategy.predictions)
-    print(f"Total Accuracy: {accuracy * 100:.2f}%")
+def backtest(ticker): # backtest function for an individual stock
+    # get data from alpaca
+    stock_data = alpaca_api.get_bars(ticker, TimeFrame.Hour, start="2020-01-01", end="2023-01-01").df
+    if stock_data.empty:
+        raise ValueError("No data fetched from Alpaca.")
     
-    # extract backtrader data
-    dates = df.index.tolist()
-    closes = strategy.data.close.array
-    sma_short = strategy.sma_short.array
-    sma_long = strategy.sma_long.array
-    rsi = strategy.rsi.array
-    macd = strategy.macd.array
+    # Prepare data for backtrader
+    stock_data.columns = [col.lower() for col in stock_data.columns]  # Ensure column names are in lowercase
+    data = CustomData(dataname=stock_data)
+
+    # Initialize Cerebro engine
+    cerebro = bt.Cerebro()
+    cerebro.adddata(data)
+    print("Training Random Forest Classifier Model for " + ticker + "...")
+    # Train model and add strategy to Cerebro
+    model = train_random_forest_model(stock_data)
+    cerebro.addstrategy(MLStrategy, model=model)
+
+    # Run backtest
+    print("Running backtest for " + ticker + "..."	)
+    strategies = cerebro.run()
+    strategy = strategies[0]
+
+    # Extract strategy data for analysis
+    dates = stock_data.index.tolist()
+    closes = stock_data['close'].tolist()
+    sma_short = [strategy.sma_short.lines.sma[index] for index in range(len(dates))]
+    sma_long = [strategy.sma_long.lines.sma[index] for index in range(len(dates))]
+    rsi = [strategy.rsi.lines.rsi[index] for index in range(len(dates))]
+    macd = [strategy.macd.lines.macd[index] for index in range(len(dates))]
+
+    # Extract account and trading values
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
 
-    # For buy/sell markers
-    buys_x = strategy.buy_dates # set buys_x to the buy dates. 
-    # for each date in buy_dates, find the associated closing price from the 'closes' list and add it to buy_y
+    # Extract buy and sell dates
+    buys_x = [bt.num2date(dt) for dt in strategy.buy_dates]
     buys_y = [closes[dates.index(date)] for date in buys_x if date in dates]
-    sells_x = strategy.sell_dates
-    # for each date in sell_dates, find the associated closing price from the 'closes' list and add it to sell_y
+    sells_x = [bt.num2date(dt) for dt in strategy.sell_dates]
     sells_y = [closes[dates.index(date)] for date in sells_x if date in dates]
 
     return dates, closes, sma_short, sma_long, rsi, macd, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 
-def calculate_dates():
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=729)).strftime('%Y-%m-%d')
-    return start_date, end_date
+class CustomData(bt.feeds.PandasData):
+    lines = ('trade_count', 'vwap',)
+    params = (
+        ('trade_count', -1),
+        ('vwap', -1),
+    )
