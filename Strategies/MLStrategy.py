@@ -6,7 +6,7 @@ import torch
 
 class MLStrategy (BaseStrategy):
     params = [
-        ("model", None)
+        ("model", None),
     ]
     
     def __init__(self):
@@ -18,25 +18,15 @@ class MLStrategy (BaseStrategy):
         # init rolling window
         self.rolling_window = deque (maxlen=60)
 
-        # Simple Moving Average
-        self.sma1 = bt.indicators.SimpleMovingAverage(self.data.close, period=50)
-        self.sma2 = bt.indicators.SimpleMovingAverage(self.data.close, period=100)
-
-        # RSI
-        self.rsi = bt.indicators.RelativeStrengthIndex(period=14)
-        
-        # EMA
-        self.ema1 = bt.indicators.EMA(self.data.close, period=12)
-        self.ema2 = bt.indicators.EMA(self.data.close, period=26)       
-
-        # Volatility
-        self.volatility = bt.indicators.StandardDeviation(self.data.close, period=14)
-
-        # Price Rate of Change
-        self.roc = bt.indicators.RateOfChange(self.data.close, period=10)
-
-        # Average True Range
-        self.atr = bt.indicators.AverageTrueRange(self.data, period=14) 
+        # Access the indicators from the custom data feed
+        self.sma1 = self.data.sma1
+        self.sma2 = self.data.sma2
+        self.rsi = self.data.rsi
+        self.ema1 = self.data.ema1
+        self.ema2 = self.data.ema2
+        self.volatility = self.data.volatility
+        self.roc = self.data.roc
+        self.atr = self.data.atr
         
     
     def prenext(self): # this will be called before next method. for all data points before long SMA minimum period.

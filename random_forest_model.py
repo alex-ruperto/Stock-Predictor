@@ -42,11 +42,10 @@ def preprocess_data(df):
 # end of features
 
 def train_random_forest_model(df):
-    df_processed = preprocess_data(df)
 
     # selection of features and target
-    X = df_processed.drop('Target', axis=1) # remove the target column
-    y = df_processed['Target'] # only the target column
+    X = df.drop('Target', axis=1) # remove the target column
+    y = df['Target'] # only the target column
 
     # split into training and test sets
     if len(X) == 0 or len(y) == 0:
