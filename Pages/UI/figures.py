@@ -6,7 +6,7 @@ from data_processing import backtest
 def generate_figures_for_tickers(tickers):
     figures = {}
     for ticker in tickers:
-        data = backtest(ticker)
+        data = backtest(ticker) # backtest returns all the data we need for the figure.
         print(f"Data for {ticker}:")
         print(data)
 
@@ -15,7 +15,7 @@ def generate_figures_for_tickers(tickers):
         
     return figures
 
-def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, macd, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y):
+def generate_figure_for_ticker(ticker, dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y):
 
     # create plotly plot
     fig = make_subplots(rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.1,

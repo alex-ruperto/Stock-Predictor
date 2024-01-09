@@ -33,9 +33,11 @@ def backtest(ticker): # backtest function for an individual stock
     # Extract strategy data for analysis
     dates = stock_data.index.tolist()
     closes = stock_data['Close'].tolist()
-    sma_short = [strategy.sma_short[0] for _ in dates]
-    sma_long = [strategy.sma_long[0] for _ in dates] 
-    rsi = [strategy.rsi[0] for _ in dates]             
+    sma_short = [strategy.sma1[0] for _ in dates]
+    sma_long = [strategy.sma2[0] for _ in dates]
+    rsi = [strategy.rsi[0] for _ in dates]   
+    ema_short = [strategy.ema1[0] for _ in dates]
+    ema_long = [strategy.ema2[0] for _ in dates]           
     volatility = [strategy.volatility[0] for _ in dates]  
     roc = [strategy.roc[0] for _ in dates]               
     atr = [strategy.atr[0] for _ in dates]
@@ -46,12 +48,14 @@ def backtest(ticker): # backtest function for an individual stock
     position_sizes = strategy.position_sizes
 
     # Extract buy and sell dates
-    buys_x = [bt.num2date(dt) for dt in strategy.buy_dates]
-    buys_y = [closes[dates.index(date)] for date in buys_x if date in dates]
-    sells_x = [bt.num2date(dt) for dt in strategy.sell_dates]
-    sells_y = [closes[dates.index(date)] for date in sells_x if date in dates]
+    buys_x = strategy.buy_dates
+    sells_x = strategy.sell_dates
+    
+    # Ensure buys_y and sells_y use the correct indexes if dates are datetime objects
+    buys_y = [closes[dates.index(date.date())] for date in buys_x if date.date() in dates]
+    sells_y = [closes[dates.index(date.date())] for date in sells_x if date.date() in dates]
 
-    return dates, closes, sma_short, sma_long, rsi, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
+    return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 
 class CustomData(bt.feeds.PandasData):
     lines = ('trade_count', 'vwap',)
