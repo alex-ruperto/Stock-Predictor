@@ -2,6 +2,7 @@ import backtrader as bt
 import alpaca_trade_api as tradeapi
 from alpaca_trade_api import TimeFrame
 import alpacaconfig as config
+import pandas as pd
 from random_forest_model import train_random_forest_model
 from Strategies.MLStrategy import MLStrategy
 
@@ -47,13 +48,20 @@ def backtest(ticker): # backtest function for an individual stock
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
 
-    # Extract buy and sell dates
-    buys_x = strategy.buy_dates
-    sells_x = strategy.sell_dates
-    
-    # Ensure buys_y and sells_y use the correct indexes if dates are datetime objects
-    buys_y = [closes[dates.index(date.date())] for date in buys_x if date.date() in dates]
-    sells_y = [closes[dates.index(date.date())] for date in sells_x if date.date() in dates]
+    # Extract and convert naive buy and sell datetime objects to timezone-aware Timestamps in UTC
+    buys_x = [pd.Timestamp(date).tz_localize('UTC') for date in strategy.buy_dates]
+    sells_x = [pd.Timestamp(date).tz_localize('UTC') for date in strategy.sell_dates]
+
+    buys_y = [closes[dates.index(date)] if date in dates else None for date in buys_x]
+    sells_y = [closes[dates.index(date)] if date in dates else None for date in sells_x]
+
+
+    # Check which buy/sell dates were not found in the dates list
+    missing_buys = [date for date, price in zip(buys_x, buys_y) if price is None]
+    missing_sells = [date for date, price in zip(sells_x, sells_y) if price is None]
+
+    print("Missing buy dates after conversion:", missing_buys)
+    print("Missing sell dates after conversion:", missing_sells)
 
     return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 

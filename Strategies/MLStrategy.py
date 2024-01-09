@@ -92,11 +92,9 @@ class MLStrategy (BaseStrategy):
         
         if prediction is not None and prediction.item() > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
-            print("Buying on " + str(bt.num2date(self.data.datetime[0])))
             self.buy()
         elif prediction is not None and self.position.size > 0 and prediction.item() < 0.5:
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
-            print("Selling on " + str(bt.num2date(self.data.datetime[0])))	
             self.sell() 
         
         self.update_lists()

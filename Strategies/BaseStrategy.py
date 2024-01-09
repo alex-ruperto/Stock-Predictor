@@ -70,7 +70,6 @@ class BaseStrategy(bt.Strategy): # base strategy class that implements take-prof
             self.buy(size=size_to_buy)
             self.price = self.data.close[0]
             self.buy_dates.append(bt.num2date(self.data.datetime[0]))
-            print(f"Rebalanced by buying {size_to_buy} shares")
 
         elif cash_difference < 0:  # Sell stock
             size_to_sell = abs(cash_difference) // self.data.close[0]
