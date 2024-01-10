@@ -10,32 +10,37 @@ time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in
 # features
 def preprocess_data(df):
     # Check if the column names are in lower case. If they are, convert them to upper case.
-    df.columns = map(str.capitalize, df.columns)
+    df.columns = map(str.lower, df.columns)
 
     # compare next day closing price to current day. convert boolean values to integer values
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int) # df['Close] is closing price for each candle. target is to get next Close higher than current.
+    df['target'] = (df['close'].shift(-1) > df['close']).astype(int) # df['close] is closing price for each candle. target is to get next close higher than current.
     # Simple Moving Averages 1 and 2
-    df['SMA1'] = pandas_ta.sma(df['Close'], length=50*time_interval)
-    df['SMA2'] = pandas_ta.sma(df['Close'], length=100*time_interval)
+    df['sma1'] = pandas_ta.sma(df['close'], length=50*time_interval)
+    df['sma2'] = pandas_ta.sma(df['close'], length=100*time_interval)
     
     # Relative Strength Index (RSI)
-    df['RSI'] = pandas_ta.rsi(df['Close'], length=14*time_interval)
+    df['rsi'] = pandas_ta.rsi(df['close'], length=14*time_interval)
 
     # Exponential Moving Averages
-    df['EMA1'] = pandas_ta.ema(df['Close'], length=12*time_interval)
-    df['EMA2'] = pandas_ta.ema(df['Close'], length=26*time_interval)
+    df['ema1'] = pandas_ta.ema(df['close'], length=12*time_interval)
+    df['ema2'] = pandas_ta.ema(df['close'], length=26*time_interval)
 
     # Historical Volatility
-    df['Volatility'] = pandas_ta.stdev(df['Close'], length=14*time_interval)
+    df['volatility'] = pandas_ta.stdev(df['close'], length=14*time_interval)
 
     # Price Rate of Change
-    df['ROC'] = pandas_ta.roc(df['Close'], length=10*time_interval)
+    df['roc'] = pandas_ta.roc(df['close'], length=10*time_interval)
 
     # Average True Range
-    df['ATR'] = pandas_ta.atr(df['High'], df['Low'], df['Close'], length=14*time_interval)
+    df['atr'] = pandas_ta.atr(df['high'], df['low'], df['close'], length=14*time_interval)
 
-    # Fill any NaN values with the mean
-    df = df.fillna(df.mean())
+    # Handle NaN values
+    df.bfill(inplace=True)  # Backward fill
+    df.ffill(inplace=True)  # Forward fill
+    if df.isnull().values.any():
+        print("Warning: NaN values found after preprocessing")
+    else:
+        print("No NaN values found after preprocessing")
 
     return df
 
@@ -44,8 +49,12 @@ def preprocess_data(df):
 def train_random_forest_model(df):
 
     # selection of features and target
-    X = df.drop('Target', axis=1) # remove the target column
-    y = df['Target'] # only the target column
+    X = df.drop('target', axis=1) # remove the target column
+    y = df['target'] # only the target column
+
+    # Print the feature names used for training
+    feature_names = X.columns.tolist()
+    print("Features used for training:", feature_names)
 
     # split into training and test sets
     if len(X) == 0 or len(y) == 0:

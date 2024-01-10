@@ -26,8 +26,10 @@ def backtest(ticker): # backtest function for an individual stock
     # Initialize Cerebro engine
     cerebro = bt.Cerebro()
     cerebro.adddata(data_feed)
-    print("Training Random Forest Classifier Model for " + ticker + "...")
+    cerebro.broker.set_cash(100)
+
     # Train model and add strategy to Cerebro
+    print("Training Random Forest Classifier Model for " + ticker + "...")
     model = train_random_forest_model(preprocessed_data)
     cerebro.addstrategy(MLStrategy, model=model)
     # Run backtest
@@ -64,10 +66,11 @@ def backtest(ticker): # backtest function for an individual stock
     return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 
 class CustomDataWithIndicators(bt.feeds.PandasData):
-    lines = ('trade_count', 'vwap', 'sma1', 'sma2', 'rsi', 'ema1', 'ema2', 'volatility', 'roc', 'atr',)
+    lines = (
+        'sma1', 'sma2', 'rsi', 'ema1', 'ema2', 'volatility', 'roc', 'atr',
+        'close', 'high', 'low', 'open', 'volume', 'trade_count', 'vwap'
+    )
     params = (
-        ('trade_count', -1),
-        ('vwap', -1),
         ('sma1', -1),
         ('sma2', -1),
         ('rsi', -1),
@@ -76,4 +79,11 @@ class CustomDataWithIndicators(bt.feeds.PandasData):
         ('volatility', -1),
         ('roc', -1),
         ('atr', -1),
+        ('close', -1),
+        ('high', -1),
+        ('low', -1),
+        ('open', -1),
+        ('volume', -1),
+        ('trade_count', -1),
+        ('vwap', -1),
     )
