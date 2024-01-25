@@ -14,21 +14,36 @@ dash.register_page(
 )
 
 layout = html.Div([
-    html.H3("Manage Tickers"),
-    
-    # Input for ticker symbol
-    dbc.Input(id='ticker-input', type='text', placeholder='Enter ticker symbol...'),
-    
-    # Buttons
-    dbc.Button("Add Ticker", id='add-ticker-button', color="success", className="mr-2"),
-    dbc.Button("Remove Ticker", id='remove-ticker-button', color="danger", className="mr-2"),
-    dbc.Button("Display All Tickers", id='display-tickers-button', className="mr-2"),
-    
-    # Placeholder for displaying list of tickers
-    html.Div(id='tickers-display', className="mt-4")
+    html.H3("Manage Tickers", className="text-center mb-4"),
+
+    dbc.Row(
+        dbc.Col(
+            dbc.Input(id='ticker-input', type='', placeholder='Enter ticker symbol...', className="mb-2"),
+            width=6,
+        ),
+        justify="center"
+    ),
+
+    dbc.Row(
+        [
+            dbc.Col(dbc.Button("Add Ticker", id='add-ticker-button', color="primary", className="mr-1"), width="auto"),
+            dbc.Col(dbc.Button("Remove Ticker", id='remove-ticker-button', color="warning", className="mr-1"), width="auto"),
+            dbc.Col(dbc.Button("Display All Tickers", id='display-tickers-button', color="info", className="mr-1"), width="auto")
+        ],
+        justify="center", # center the buttons
+        className="mb-4" # margin bottom for spacing from content
+    ),
+
+    dbc.Row(
+        dbc.Col(
+            html.Div(id='tickers-display', className="mt-4"),
+            width=12
+        ),
+        justify="center"
+    )
 ])
 
-# Register the callbacks for page_2
+# Register the callbacks for ticker_page
 @callback(
     Output('tickers-display', 'children'),
     [

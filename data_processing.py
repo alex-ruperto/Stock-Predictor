@@ -4,7 +4,7 @@ from alpaca_trade_api import TimeFrame
 import alpacaconfig as config
 import pandas as pd
 from random_forest_model import train_random_forest_model
-from Strategies.MLStrategy import MLStrategy
+from Strategies.RFCStrategy import RFCStrategy
 from random_forest_model import preprocess_data
 
 alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
@@ -31,7 +31,7 @@ def backtest(ticker): # backtest function for an individual stock
     # Train model and add strategy to Cerebro
     print("Training Random Forest Classifier Model for " + ticker + "...")
     model = train_random_forest_model(preprocessed_data)
-    cerebro.addstrategy(MLStrategy, model=model)
+    cerebro.addstrategy(RFCStrategy, model=model)
     # Run backtest
     print("Running backtest for " + ticker + "..."	)
     strategies = cerebro.run()

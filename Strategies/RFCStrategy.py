@@ -4,7 +4,7 @@ import pandas as pd
 from collections import deque
 import torch
 
-class MLStrategy (BaseStrategy):
+class RFCStrategy (BaseStrategy):
     params = [
         ("model", None)
     ]

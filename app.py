@@ -2,7 +2,6 @@
 from app_instance import app
 import dash_bootstrap_components as dbc
 import dash 
-from dash import Input, Output, State, html, Dash, html, dcc
 
 navbar = dbc.NavbarSimple(
     children=[

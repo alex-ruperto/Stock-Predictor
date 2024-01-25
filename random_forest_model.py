@@ -37,11 +37,9 @@ def preprocess_data(df):
     # Handle NaN values
     df.bfill(inplace=True)  # Backward fill
     df.ffill(inplace=True)  # Forward fill
+    
     if df.isnull().values.any():
         print("Warning: NaN values found after preprocessing")
-    else:
-        print("No NaN values found after preprocessing")
-
     return df
 
 # end of features
