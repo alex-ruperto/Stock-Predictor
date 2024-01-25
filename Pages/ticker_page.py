@@ -26,9 +26,9 @@ layout = html.Div([
 
     dbc.Row(
         [
-            dbc.Col(dbc.Button("Add Ticker", id='add-ticker-button', color="primary", className="mr-1"), width="auto"),
-            dbc.Col(dbc.Button("Remove Ticker", id='remove-ticker-button', color="warning", className="mr-1"), width="auto"),
-            dbc.Col(dbc.Button("Display All Tickers", id='display-tickers-button', color="info", className="mr-1"), width="auto")
+            dbc.Col(dbc.Button("Add Ticker", id='add-ticker-button', className="custom-button-add mr-2"), width="auto"),
+            dbc.Col(dbc.Button("Remove Ticker", id='remove-ticker-button', className="custom-button-remove mr-2"), width="auto"),
+            dbc.Col(dbc.Button("Display All Tickers", id='display-tickers-button', className="custom-button-info mr-2"), width="auto")
         ],
         justify="center", # center the buttons
         className="mb-4" # margin bottom for spacing from content
@@ -36,7 +36,7 @@ layout = html.Div([
 
     dbc.Row(
         dbc.Col(
-            html.Div(id='tickers-display', className="mt-4"),
+            dbc.ListGroup(id='tickers-display', className="mt-4 ticker-list-group"),
             width=12
         ),
         justify="center"
@@ -69,6 +69,6 @@ def update_db(add_click, remove_click, display_click, ticker_value):
 
     elif button_id == 'display-tickers-button':
         all_tickers = ticker_db.get_all_tickers()
-        return ", ".join(all_tickers)
+        return [dbc.ListGroupItem(ticker) for ticker in all_tickers]
 
     return ""
