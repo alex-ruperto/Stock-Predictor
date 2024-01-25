@@ -36,8 +36,8 @@ layout = dbc.Container([
     ], className='mt-5'), #bootstrap's margin-top
     dbc.Row([
         dcc.Graph(id='ticker-graph')
-    ])
-])
+    ], className='mt-5'),  # Ensure there's space between the dropdown and graph
+], fluid=True)  # Ensuring the container is fluid for full-width usage
 
 # Callback to update dropdown options. In case something was added or removed.
 @callback(
