@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 import pandas_ta
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
 time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
 
 # features
@@ -60,13 +61,24 @@ def train_random_forest_model(df):
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
 
-    rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
-    rf_classifier.fit(X_train, y_train)
+    rf_classifier = RandomForestClassifier(random_state=42)
+    # Define the parameters grid for hyperparameter tuning
+    parameters = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
 
-    # make predictions and evaluate the model.
-    predictions = rf_classifier.predict(X_test)
+    # Use GridSearchCV for hyperparameter tuning
+    grid_search = GridSearchCV(estimator=rf_classifier, param_grid=parameters, cv=5, n_jobs=-1, verbose=2)
+    grid_search.fit(X_train, y_train)
+
+    # Make predictions with the best estimator
+    best_rf_classifier = grid_search.best_estimator_
+    predictions = best_rf_classifier.predict(X_test)
     accuracy = accuracy_score(y_test, predictions)
-    print(f'Accuracy: {accuracy}')
+    print(f'Accuracy of the best model: {accuracy}')
     print(classification_report(y_test, predictions))
 
-    return rf_classifier
+    return best_rf_classifier
