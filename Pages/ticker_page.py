@@ -40,7 +40,8 @@ layout = html.Div([
             width=12
         ),
         justify="center"
-    )
+    ),
+
 ])
 
 # Register the callbacks for ticker_page
