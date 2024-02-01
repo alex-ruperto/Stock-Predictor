@@ -183,7 +183,7 @@ class LSTMModel(nn.Module): # nn module is the base class for all neural network
         out = out[:, -1, :]
         self.dropout(out) # apply dropout
         out = self.fc(out) # 1 output
-        return out
+        return oue
 
 def dynamically_introduce_features(df, feature_periods):
         max_warm_up = max(feature_periods.values())

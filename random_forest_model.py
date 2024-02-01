@@ -55,7 +55,7 @@ def train_random_forest_model(df):
     feature_names = X.columns.tolist()
     print("Features used for training:", feature_names)
 
-    # split into training and test sets
+    # Split into training and test sets
     if len(X) == 0 or len(y) == 0:
         raise ValueError("No data available for training.")
 
@@ -64,10 +64,10 @@ def train_random_forest_model(df):
     rf_classifier = RandomForestClassifier(random_state=42)
     # Define the parameters grid for hyperparameter tuning
     parameters = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [None, 10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
+        'n_estimators': [200, 300],
+        'max_depth': [10, 30],
+        'min_samples_split': [2, 10],
+        'min_samples_leaf': [1, 4]
     }
 
     # Use GridSearchCV for hyperparameter tuning
