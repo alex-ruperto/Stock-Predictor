@@ -4,12 +4,30 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 import pandas_ta
+import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
+
+
+# logging setup 
+logging.basicConfig(
+    level=logging.INFO, # all messages (Info, Warning, Error, and Critical) will be logged
+    format='Time: %(asctime)s  \nLevel: %(levelname)s \nMessage: %(message)s'
+    # %(asctime)s = current time when the log message is generated. e.g., ‘2003-07-08 16:49:45,896’ 
+    # (the numbers after the comma are millisecond portion of the time).
+
+    # %(levelname)s = the text logging level, whether it's DEBUG, INFO, WARNING, ERROR, or CRITICAL
+
+    # %(message)s = the logged message
+)
+
+logger = logging.getLogger() # create a logger instance
+
 time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
 
 # features
 def preprocess_data(df):
+    logger.info("Data preprocessing started.")
     # Check if the column names are in lower case. If they are, convert them to upper case.
     df.columns = map(str.lower, df.columns)
 
@@ -40,11 +58,12 @@ def preprocess_data(df):
     df.ffill(inplace=True)  # Forward fill
     
     if df.isnull().values.any():
-        print("Warning: NaN values found after preprocessing")
+        logger.warning("Warning: NaN values found after preprocessing")
+    
+    logger.info("Data preprocessing complete.")
     return df
 
-# end of features
-
+# model training
 def train_random_forest_model(df):
 
     # selection of features and target

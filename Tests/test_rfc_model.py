@@ -1,12 +1,15 @@
 import unittest
-from random_forest_model import preprocess_data
+from unittest.mock import patch
+from random_forest_model import preprocess_data # import this function for testing
 import yfinance as yf 
 from datetime import datetime, timedelta
 import pandas as pd
 
 # TODO write a unit test for random_forest_model.py
-class TestFeatures(unittest.TestCase):
+
+class TestPreprocessing(unittest.TestCase):
     @classmethod
+    @patch('random_forest_model.logger') # patch the logger used in random_forest_model
     def setUpClass(cls):
         cls.time_interval = 6.5 # this is the actual time interval used in the data.
         ticker = "GOOG"
@@ -30,6 +33,18 @@ class TestFeatures(unittest.TestCase):
         self.assertFalse(processed_data.isnull().values.any())
 
         # You can add more tests here to check for data types, value ranges, etc.
+    
+    def test_logging(self, mock_logger):
+        preprocessed_data = preprocess_data(self.data)
+
+        self.assertTrue(mock_logger.info.called)
+        self.assertTrue(mock_logger.warning.called)
+
+        mock_logger.info.assert_any_call("Data preprocessing started.")
+        mock_logger.info.assert_any_call("Data preprocessing complete.")
+        mock_logger.warning.assert_any_call("Warning: NaN values found after preprocessing")
+        
+
 
 if __name__ == '__main__':
     unittest.main()

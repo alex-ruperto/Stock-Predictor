@@ -158,11 +158,11 @@ class EarlyStopping:
 class LSTMModel(nn.Module): # nn module is the base class for all neural networks modules in PyTorch.
     def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length): # constructor
         super().__init__() # call the init function from the superclass.
-        self.num_classes = num_classes #number of classes
-        self.num_layers = num_layers #number of layers
-        self.input_size = input_size #input size
-        self.hidden_size = hidden_size #hidden state
-        self.seq_length = seq_length #sequence length
+        self.num_classes = num_classes # number of classes
+        self.num_layers = num_layers # number of layers
+        self.input_size = input_size # input size
+        self.hidden_size = hidden_size # hidden state
+        self.seq_length = seq_length # sequence length
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         print(self.device)
         self.dropout = nn.Dropout(0.5)
