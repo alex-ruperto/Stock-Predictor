@@ -52,8 +52,6 @@ def preprocess_data(df):
 
 # model training
 def train_random_forest_model(df):
-    logger.info("Random Forest Classifier Selected. Beginning model training...")
-
     # selection of features and target
     X = df.drop('target', axis=1) # remove the target column
     y = df['target'] # only the target column

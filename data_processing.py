@@ -6,10 +6,14 @@ import pandas as pd
 from random_forest_model import train_random_forest_model
 from Strategies.RFCStrategy import RFCStrategy
 from random_forest_model import preprocess_data
+import logging
+
+logger = logging.getLogger() # create a logger instance
 
 alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
 
 def backtest(ticker): # backtest function for an individual stock
+    logger.info("Collecting stock data...")
     # get data from alpaca
     stock_data = alpaca_api.get_bars(ticker, TimeFrame.Hour, start="2022-01-01", end="2023-01-01").df
     if stock_data.empty:
@@ -29,11 +33,12 @@ def backtest(ticker): # backtest function for an individual stock
     cerebro.broker.set_cash(100)
 
     # Train model and add strategy to Cerebro
-    print("Training Random Forest Classifier Model for " + ticker + "...")
+    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
     model = train_random_forest_model(preprocessed_data)
     cerebro.addstrategy(RFCStrategy, model=model)
+
     # Run backtest
-    print("Running backtest for " + ticker + "..."	)
+    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
     strategies = cerebro.run()
     strategy = strategies[0]
 
@@ -61,7 +66,7 @@ def backtest(ticker): # backtest function for an individual stock
     buys_y = [closes[dates.index(date)] if date in dates else None for date in buys_x]
     sells_y = [closes[dates.index(date)] if date in dates else None for date in sells_x]
 
-    print("Backtest for " + ticker + " completed.")
+    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
 
     return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 
