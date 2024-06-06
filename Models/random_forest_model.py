@@ -7,6 +7,7 @@ import pandas_ta
 import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
+from models.base_model import ModelTrainer
 
 logger = logging.getLogger() # create a logger instance
 
@@ -50,40 +51,40 @@ def preprocess_data(df):
     logger.info("Data preprocessing complete.")
     return df
 
-# model training
-def train_random_forest_model(df):
-    # selection of features and target
-    X = df.drop('target', axis=1) # remove the target column
-    y = df['target'] # only the target column
+class RandomForestTrainer(ModelTrainer):
+    def train(self, df: pd.DataFrame, target_column: str) -> RandomForestClassifier: # return a RandomForestClassifier
+        # selection of features and target
+        X = df.drop(target_column, axis=1) # remove the target column
+        y = df[target_column] # only the target column
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+        rf_classifier = RandomForestClassifier(random_state=42)
 
-    # Print the feature names used for training
-    feature_names = X.columns.tolist()
-    logger.info("Features used for training: %s", feature_names)
+        # parameter grid for parameter tuning
+        parameters = {
+            'n_estimators': [200, 300],
+            'max_depth': [10, 30],
+            'min_samples_split': [2, 10],
+            'min_samples_leaf': [1, 4]
+        }
 
-    # Split into training and test sets
-    if len(X) == 0 or len(y) == 0:
-        raise ValueError("No data available for training.")
+        # Use GridSearchCV for hyperparameter tuning
+        grid_search = GridSearchCV(estimator=rf_classifier, param_grid=parameters, cv=5, n_jobs=-1, verbose=2)
+        grid_search.fit(X_train, y_train)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+        # Make predictions with the best estimator
+        best_rf_classifier = grid_search.best_estimator_
+        logger.info('Random Forest Classifier model trained.')
+        return best_rf_classifier
 
-    rf_classifier = RandomForestClassifier(random_state=42)
-    # Define the parameters grid for hyperparameter tuning
-    parameters = {
-        'n_estimators': [200, 300],
-        'max_depth': [10, 30],
-        'min_samples_split': [2, 10],
-        'min_samples_leaf': [1, 4]
-    }
+    def predict(self, model: RandomForestClassifier, features: pd.DataFrame) ->np.ndarray:
+        return model.predict(features)
 
-    # Use GridSearchCV for hyperparameter tuning
-    grid_search = GridSearchCV(estimator=rf_classifier, param_grid=parameters, cv=5, n_jobs=-1, verbose=2)
-    grid_search.fit(X_train, y_train)
-
-    # Make predictions with the best estimator
-    best_rf_classifier = grid_search.best_estimator_
-    predictions = best_rf_classifier.predict(X_test)
-    accuracy = accuracy_score(y_test, predictions)
-    logger.info('Accuracy of the best model: %s', accuracy)
-    logger.info(classification_report(y_test, predictions))
-
-    return best_rf_classifier
+    def evaluate(self, model: RandomForestClassifier, df: pd.DataFrame, target_column: str) -> dict:
+        X = df.drop(target_column, axis=1)
+        y= df[target_column]
+        predictions = model.predict(X)
+        accuracy = accuracy_score(y, predictions)
+        report = classification_report(y, predictions, output_dict=True)
+        logger.info(f'Accuracy of Random Forest model: {accuracy}')
+        logger.info(classification_report(y, predictions))
+        return {'accuracy': accuracy, 'classification_report': report} # return this dictionary
