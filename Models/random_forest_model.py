@@ -7,56 +7,25 @@ import pandas_ta
 import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
-from models.base_model import ModelTrainer
-
-logger = logging.getLogger() # create a logger instance
-
-time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.
-
-# features
-def preprocess_data(df):
-    logger.info("Data preprocessing started.")
-    # Check if the column names are in lower case. If they are, convert them to upper case.
-    df.columns = map(str.lower, df.columns)
-
-    # compare next day closing price to current day. convert boolean values to integer values
-    df['target'] = (df['close'].shift(-1) > df['close']).astype(int) # df['close] is closing price for each candle. target is to get next close higher than current.
-    # Simple Moving Averages 1 and 2
-    df['sma1'] = pandas_ta.sma(df['close'], length=50*time_interval)
-    df['sma2'] = pandas_ta.sma(df['close'], length=100*time_interval)
-    
-    # Relative Strength Index (RSI)
-    df['rsi'] = pandas_ta.rsi(df['close'], length=14*time_interval)
-
-    # Exponential Moving Averages
-    df['ema1'] = pandas_ta.ema(df['close'], length=12*time_interval)
-    df['ema2'] = pandas_ta.ema(df['close'], length=26*time_interval)
-
-    # Historical Volatility
-    df['volatility'] = pandas_ta.stdev(df['close'], length=14*time_interval)
-
-    # Price Rate of Change
-    df['roc'] = pandas_ta.roc(df['close'], length=10*time_interval)
-
-    # Average True Range
-    df['atr'] = pandas_ta.atr(df['high'], df['low'], df['close'], length=14*time_interval)
-
-    # Handle NaN values
-    df.bfill(inplace=True)  # Backward fill
-    df.ffill(inplace=True)  # Forward fill
-    
-    if df.isnull().values.any():
-        logger.warning("Warning: NaN values found after preprocessing")
-    
-    logger.info("Data preprocessing complete.")
-    return df
+from Models.base_model import ModelTrainer
+from Utils.logger_config import configure_logger
 
 class RandomForestTrainer(ModelTrainer):
+    def __init__(self):
+        self.logger = configure_logger(self.__class__.__name__)
+        self.model = None
+        self.X_test = None
+        self.y_test = None
+
     def train(self, df: pd.DataFrame, target_column: str) -> RandomForestClassifier: # return a RandomForestClassifier
         # selection of features and target
         X = df.drop(target_column, axis=1) # remove the target column
         y = df[target_column] # only the target column
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+        
+        self.X_test = X_test
+        self.y_test = y_test
+
         rf_classifier = RandomForestClassifier(random_state=42)
 
         # parameter grid for parameter tuning
@@ -72,19 +41,20 @@ class RandomForestTrainer(ModelTrainer):
         grid_search.fit(X_train, y_train)
 
         # Make predictions with the best estimator
-        best_rf_classifier = grid_search.best_estimator_
-        logger.info('Random Forest Classifier model trained.')
-        return best_rf_classifier
+        self.model = grid_search.best_estimator_
+        self.logger.info('Random Forest Classifier model trained.')
+        return self.model
 
     def predict(self, model: RandomForestClassifier, features: pd.DataFrame) ->np.ndarray:
         return model.predict(features)
 
-    def evaluate(self, model: RandomForestClassifier, df: pd.DataFrame, target_column: str) -> dict:
-        X = df.drop(target_column, axis=1)
-        y= df[target_column]
-        predictions = model.predict(X)
-        accuracy = accuracy_score(y, predictions)
-        report = classification_report(y, predictions, output_dict=True)
-        logger.info(f'Accuracy of Random Forest model: {accuracy}')
-        logger.info(classification_report(y, predictions))
-        return {'accuracy': accuracy, 'classification_report': report} # return this dictionary
+    def evaluate(self, model:RandomForestClassifier) -> dict:
+        if self.X_test is None or self.y_test is None:
+            raise ValueError("Test was not found. Make sure to call the train() function before the evaluate() function.")
+
+        predictions = model.predict(self.X_test)
+        accuracy = accuracy_score(self.y_test, predictions)
+        report = classification_report(self.y_test, predictions, output_dict=True)
+        self.logger.info(f'Accuracy of Random Forest model: {accuracy}')
+        self.logger.info(classification_report(self.y_test, predictions))
+        return {'accuracy': accuracy, 'classification_report': report}

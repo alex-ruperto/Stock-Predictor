@@ -1,14 +1,16 @@
+# imports
 import backtrader as bt
 import alpaca_trade_api as tradeapi
-from alpaca_trade_api import TimeFrame
 import alpacaconfig as config
 import pandas as pd
-from random_forest_model import train_random_forest_model
-from Strategies.RFCStrategy import RFCStrategy
-from random_forest_model import preprocess_data
 import logging
+from Models.random_forest_model import RandomForestTrainer
+from Preprocessors.rfc_preprocessor import RFCPreprocessor
+from Strategies.RFCStrategy import RFCStrategy
+from alpaca_trade_api import TimeFrame
+from Utils.logger_config import configure_logger
 
-logger = logging.getLogger() # create a logger instance
+logger = configure_logger("Backtest")
 
 alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
 
@@ -23,7 +25,8 @@ def backtest(ticker): # backtest function for an individual stock
     stock_data.columns = [col.lower() for col in stock_data.columns]  # Ensure column names are in lowercase
     
     # Preprocess data with indicators
-    preprocessed_data = preprocess_data(stock_data)
+    preprocessor = RFCPreprocessor()
+    preprocessed_data=  preprocessor.preprocess(stock_data)
 
     data_feed = CustomDataWithIndicators(dataname=preprocessed_data)
     
@@ -34,13 +37,23 @@ def backtest(ticker): # backtest function for an individual stock
 
     # Train model and add strategy to Cerebro
     logger.info("Training Random Forest Classifier Model for " + ticker + "...")
-    model = train_random_forest_model(preprocessed_data)
-    cerebro.addstrategy(RFCStrategy, model=model)
+    rfc_trainer = RandomForestTrainer()
+    rfc_trainer.train(preprocessed_data, 'target')
+    cerebro.addstrategy(RFCStrategy, model=rfc_trainer.model)\
+    
+    # Evaluate the model performance
+    evaluation_metrics = rfc_trainer.evaluate(rfc_trainer.model, preprocessed_data, 'target')
+    logger.info(f"Test set evaluation metrics: {evaluation_metrics}")
 
     # Run backtest
-    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
-    strategies = cerebro.run()
-    strategy = strategies[0]
+    logger.info("Backtesting Random Forest Classifier Model for " + ticker + "...")
+    strategies = cerebro.run() # return a list of strategies
+    strategy = strategies[0] # extract first strategy instance 
+
+    predictions = strategy.predictions
+    actual_movements = strategy.actual_movements
+    accuracy = sum([1 if p == a else 0 for p, a in zip(predictions, actual_movements)]) / len(predictions)
+    logger.info(f"Backtest Accuracy: {accuracy}")
 
     # Extract strategy data for analysis
     dates = stock_data.index.tolist()
@@ -65,8 +78,6 @@ def backtest(ticker): # backtest function for an individual stock
 
     buys_y = [closes[dates.index(date)] if date in dates else None for date in buys_x]
     sells_y = [closes[dates.index(date)] if date in dates else None for date in sells_x]
-
-    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
 
     return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
 

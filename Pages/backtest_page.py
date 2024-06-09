@@ -1,9 +1,9 @@
 import dash
 from dash import html, dcc, callback
 from dash.dependencies import Input, Output, State
-from ticker_db import get_all_tickers, get_ticker_data
+from Utils.ticker_db import get_all_tickers, get_ticker_data
 from Pages.UI.figures import generate_figure_for_ticker
-import ticker_db
+import Utils.ticker_db as ticker_db
 import dash_bootstrap_components as dbc
 
 dash.register_page(

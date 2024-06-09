@@ -1,7 +1,7 @@
 
 import shelve
 import yfinance as yf
-from data_processing import backtest
+from Utils.data_processing import backtest
 import plotly.graph_objects as go
 from Pages.UI.figures import generate_figure_for_ticker
 

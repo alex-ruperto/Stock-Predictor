@@ -2,8 +2,8 @@ import dash
 from dash import html, dcc, callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-from ticker_db import add_ticker, remove_ticker, get_all_tickers
-import ticker_db
+from Utils.ticker_db import add_ticker, remove_ticker, get_all_tickers
+import Utils.ticker_db as ticker_db
 from io import StringIO
 import logging
 

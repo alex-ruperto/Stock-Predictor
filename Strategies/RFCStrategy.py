@@ -3,11 +3,12 @@ from Strategies.BaseStrategy import BaseStrategy
 import pandas as pd
 from collections import deque
 import torch
+import numpy as np
 
 class RFCStrategy (BaseStrategy):
-    params = [
-        ("model", None)
-    ]
+    params = (
+        ("model", None),
+    )
     
     def __init__(self):
         super().__init__()
@@ -74,16 +75,20 @@ class RFCStrategy (BaseStrategy):
         # Prediction logic
         with torch.no_grad():  # don't compute gradients during inference
             prediction = self.p.model.predict(prediction_data_df)
-            self.predictions.append(1 if prediction > 0.5 else 0)
+
+            # ensure the prediction value is extracted correctly, whether the model returns a list, numpy array, or single value.
+            prediction_value = prediction[0] if isinstance(prediction, (list, np.ndarray)) else prediction
+
+            self.predictions.append(1 if prediction_value > 0.5 else 0)
             current_close = self.data.close[0]
             previous_close = self.previous_close if self.previous_close is not None else current_close
             movement = 1 if previous_close < current_close else 0
             self.actual_movements.append(movement)
         
-        if prediction is not None and prediction.item() > 0.5:
+        if prediction is not None and prediction_value > 0.5:
             self.buy_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.buy()
-        elif prediction is not None and self.position.size > 0 and prediction.item() < 0.5:
+        elif prediction is not None and self.position.size > 0 and prediction_value < 0.5:
             self.sell_dates.append(bt.num2date(self.data.datetime[0])) # add the date of when it bought
             self.sell() 
         

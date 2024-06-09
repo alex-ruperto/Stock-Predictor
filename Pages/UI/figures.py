@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 import numpy as np
 from plotly.subplots import make_subplots
-from data_processing import backtest
+from Utils.data_processing import backtest
 
 def generate_figures_for_tickers(tickers):
     figures = {}

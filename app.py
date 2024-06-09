@@ -1,5 +1,5 @@
 # imports 
-from app_instance import app
+from Utils.app_instance import app
 import dash_bootstrap_components as dbc
 import dash 
 
