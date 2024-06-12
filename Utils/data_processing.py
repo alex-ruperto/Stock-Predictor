@@ -36,16 +36,18 @@ def backtest(ticker): # backtest function for an individual stock
     cerebro.broker.set_cash(100)
 
     # Train model and add strategy to Cerebro
-    logger.info("Training Random Forest Classifier Model for " + ticker + "...")
     rfc_trainer = RandomForestTrainer()
     rfc_trainer.train(preprocessed_data, 'target')
-    cerebro.addstrategy(RFCStrategy, model=rfc_trainer.model)\
-    
-    # Evaluate the model performance
-    evaluation_metrics = rfc_trainer.evaluate(rfc_trainer.model, preprocessed_data, 'target')
-    logger.info(f"Test set evaluation metrics: {evaluation_metrics}")
 
+    # Evaluate the model performance during training
+    try:
+        evaluation_metrics = rfc_trainer.evaluate(rfc_trainer.model)
+        logger.info(f"Training set evaluation metrics: {evaluation_metrics}")
+    except Exception as e:
+        logger.error(f"Error evaluating model: {str(e)}")
+    
     # Run backtest
+    cerebro.addstrategy(RFCStrategy, model=rfc_trainer.model)
     logger.info("Backtesting Random Forest Classifier Model for " + ticker + "...")
     strategies = cerebro.run() # return a list of strategies
     strategy = strategies[0] # extract first strategy instance 
