@@ -47,10 +47,14 @@ def backtest(ticker): # backtest function for an individual stock
         logger.error(f"Error evaluating model: {str(e)}")
     
     # Run backtest
-    cerebro.addstrategy(RFCStrategy, model=rfc_trainer.model)
-    logger.info("Backtesting Random Forest Classifier Model for " + ticker + "...")
-    strategies = cerebro.run() # return a list of strategies
-    strategy = strategies[0] # extract first strategy instance 
+    try:
+        cerebro.addstrategy(RFCStrategy, model=rfc_trainer.model)
+        logger.info("Backtesting Random Forest Classifier Model for " + ticker + "...")
+        strategies = cerebro.run() # return a list of strategies
+        strategy = strategies[0] # extract first strategy instance 
+    except Exception as e:
+        logger.error(f"Error running backtest: {str(e)}")
+
 
     predictions = strategy.predictions
     actual_movements = strategy.actual_movements
@@ -60,28 +64,23 @@ def backtest(ticker): # backtest function for an individual stock
     # Extract strategy data for analysis
     dates = stock_data.index.tolist()
     closes = strategy.data.close.array
-    sma_short = strategy.sma1.array
-    sma_long = strategy.sma2.array
-    rsi = strategy.rsi.array
-    ema_short = strategy.ema1.array
-    ema_long = strategy.ema2.array      
-    volatility = strategy.volatility.array 
-    roc = strategy.roc.array               
-    atr = strategy.atr.array
-
-    # Extract account and trading values
     cash_values = strategy.cash_values
     account_values = strategy.account_values
     position_sizes = strategy.position_sizes
 
-    # Extract and convert naive buy and sell datetime objects to timezone-aware Timestamps in UTC
+    # Extract and convert buy and sell datetime objects to timezone-aware Timestamps in UTC
     buys_x = [pd.Timestamp(date).tz_localize('UTC') for date in strategy.buy_dates]
     sells_x = [pd.Timestamp(date).tz_localize('UTC') for date in strategy.sell_dates]
 
     buys_y = [closes[dates.index(date)] if date in dates else None for date in buys_x]
     sells_y = [closes[dates.index(date)] if date in dates else None for date in sells_x]
 
-    return dates, closes, sma_short, sma_long, rsi, ema_short, ema_long, volatility, roc, atr, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y
+    # Extract feature importances
+    feature_importances = rfc_trainer.model.feature_importances_
+
+    logger.info("Backtest complete.")
+
+    return dates, closes, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y, predictions, actual_movements, evaluation_metrics, feature_importances, preprocessed_data
 
 class CustomDataWithIndicators(bt.feeds.PandasData):
     lines = (

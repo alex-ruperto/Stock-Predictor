@@ -2,10 +2,11 @@ import dash
 from dash import html, dcc, callback
 from dash.dependencies import Input, Output, State
 from Utils.ticker_db import get_all_tickers, get_ticker_data
-from Pages.UI.figures import generate_figure_for_ticker
 import Utils.ticker_db as ticker_db
 import dash_bootstrap_components as dbc
+from Utils.logger_config import configure_logger
 
+logger = configure_logger('Backtest Page')
 dash.register_page(
     __name__, 
     title="Backtest",
@@ -13,7 +14,7 @@ dash.register_page(
     description="This is the backtest data."
 )
 
-# Assuming TICKERS is a list of ticker symbols
+# TICKERS is a list of ticker symbols
 TICKERS = get_all_tickers()
 
 # Dropdown component for ticker selection
@@ -23,7 +24,7 @@ ticker_dropdown = dcc.Dropdown(
     value=TICKERS[0] if TICKERS else None  # Default to the first ticker or none
 )
 
-# Layout for page_3
+# Layout for backtest_page
 layout = dbc.Container([
     dbc.Row([
         dcc.Dropdown(
@@ -58,5 +59,8 @@ def update_dropdown_options(current_value):
     [Input('ticker-dropdown', 'value')]
 )
 def update_graph(selected_ticker):
-    ticker_data = get_ticker_data(selected_ticker)
-    return ticker_data['figure'] if ticker_data else {}
+    if selected_ticker:
+        ticker_data = get_ticker_data(selected_ticker)
+        logger.info(f"Ticker data was retrieved for {selected_ticker}: {ticker_data}")
+        return ticker_data['figure'] if ticker_data else {}
+    return {}
