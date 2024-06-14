@@ -59,8 +59,6 @@ class RandomForestTrainer(ModelTrainer):
             raise ValueError("Test was not found. Make sure to call the train() function before the evaluate() function.")
 
         predictions = model.predict(self.X_test)
-        accuracy = accuracy_score(self.y_test, predictions)
         report = classification_report(self.y_test, predictions, output_dict=True)
-        self.logger.info(f'Accuracy of Random Forest model: {accuracy}')
         self.logger.info(classification_report(self.y_test, predictions))
-        return {'accuracy': accuracy, 'classification_report': report}
+        return {'classification_report': report}

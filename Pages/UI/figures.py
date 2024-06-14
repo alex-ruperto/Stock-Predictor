@@ -14,7 +14,7 @@ def generate_figures_for_tickers(tickers):
         figures[ticker] = fig
     return figures
 
-def generate_figure_for_ticker(ticker, dates, closes, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y, predictions, actual_movements, evaluation_metrics, feature_importances, preprocessed_data):
+def generate_figure_for_ticker(ticker, dates, closes, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y, predictions, actual_movements, bt_accuracy, evaluation_metrics, feature_importances, preprocessed_data):
     
     # create plotly plot
     fig = make_subplots(rows=6, cols=1, shared_xaxes=True, vertical_spacing=0.1,
@@ -31,11 +31,10 @@ def generate_figure_for_ticker(ticker, dates, closes, cash_values, account_value
                 legend='legend1'), row=1, col=1)   # Plot the sells on row 1 col 1
     
     # Second plot (Backtest Accuracy)
-    fig.add_trace(go.Bar(x=['Backtest Accuracy'], y=[evaluation_metrics['accuracy']], name='Backtest Accuracy', legend='legend2'), row=2, col=1)
+    fig.add_trace(go.Bar(x=['Backtest Accuracy'], y=[bt_accuracy], name='Backtest Accuracy', legend='legend2'), row=2, col=1)
 
-    
     # Third Plot (Machine learning model Evaluation Metrics)
-    metrics_keys, metrics_values = flatten_evaluation_metrics(evaluation_metrics)
+    metrics_keys, metrics_values = flatten_evaluation_metrics(evaluation_metrics['classification_report'])
     fig.add_trace(go.Bar(x=metrics_keys, y=metrics_values, name='Evaluation Metrics', legend='legend3'), row=3, col=1)
     
     # Fourth Plot (Feature Importances)

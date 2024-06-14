@@ -15,3 +15,4 @@ _.DS_Store
 trading-bot-env/
 config.py
 alpacaconfig.py
+ticker_data.db

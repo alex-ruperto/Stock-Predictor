@@ -1,7 +1,7 @@
 # imports
 import backtrader as bt
 import alpaca_trade_api as tradeapi
-import alpacaconfig as config
+import Utils.alpacaconfig as config
 import pandas as pd
 import logging
 from Models.random_forest_model import RandomForestTrainer
@@ -55,11 +55,10 @@ def backtest(ticker): # backtest function for an individual stock
     except Exception as e:
         logger.error(f"Error running backtest: {str(e)}")
 
-
     predictions = strategy.predictions
     actual_movements = strategy.actual_movements
-    accuracy = sum([1 if p == a else 0 for p, a in zip(predictions, actual_movements)]) / len(predictions)
-    logger.info(f"Backtest Accuracy: {accuracy}")
+    bt_accuracy = sum([1 if p == a else 0 for p, a in zip(predictions, actual_movements)]) / len(predictions)
+    logger.info(f"Backtest Accuracy: {bt_accuracy}")
 
     # Extract strategy data for analysis
     dates = stock_data.index.tolist()
@@ -80,7 +79,7 @@ def backtest(ticker): # backtest function for an individual stock
 
     logger.info("Backtest complete.")
 
-    return dates, closes, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y, predictions, actual_movements, evaluation_metrics, feature_importances, preprocessed_data
+    return dates, closes, cash_values, account_values, position_sizes, buys_x, buys_y, sells_x, sells_y, predictions, actual_movements, bt_accuracy, evaluation_metrics, feature_importances, preprocessed_data
 
 class CustomDataWithIndicators(bt.feeds.PandasData):
     lines = (
