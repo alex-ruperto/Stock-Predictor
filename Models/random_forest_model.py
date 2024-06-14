@@ -8,11 +8,11 @@ import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 from Models.base_model import ModelTrainer
-from Utils.logger_config import configure_logger
+from Utils.logger_config import configure_logger, shared_log_stream
 
 class RandomForestTrainer(ModelTrainer):
     def __init__(self):
-        self.logger = configure_logger(self.__class__.__name__)
+        self.logger = configure_logger(self.__class__.__name__, shared_log_stream)
         self.model = None
         self.X_test = None
         self.y_test = None
@@ -60,5 +60,5 @@ class RandomForestTrainer(ModelTrainer):
 
         predictions = model.predict(self.X_test)
         report = classification_report(self.y_test, predictions, output_dict=True)
-        self.logger.info(classification_report(self.y_test, predictions))
+        self.logger.info(f'\n{classification_report(self.y_test, predictions)}')
         return {'classification_report': report}

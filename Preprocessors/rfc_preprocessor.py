@@ -1,11 +1,11 @@
 import pandas as pd
 import pandas_ta as ta
 from Preprocessors.base_preprocessor import DataPreprocessor
-from Utils.logger_config import configure_logger
+from Utils.logger_config import configure_logger, shared_log_stream
 
 class RFCPreprocessor(DataPreprocessor):
     def __init__(self):
-        self.logger = configure_logger(self.__class__.__name__) # create new logger with the class name as a string. 'RFCPreprocessor'
+        self.logger = configure_logger(self.__class__.__name__, shared_log_stream) # create new logger with the class name as a string. 'RFCPreprocessor'
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         time_interval = 6.5 # Adjust this to whatever the time interval from raw_data in data_processing is. There are 6.5 hourly interval candles in a single trading day.

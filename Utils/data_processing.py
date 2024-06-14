@@ -8,9 +8,9 @@ from Models.random_forest_model import RandomForestTrainer
 from Preprocessors.rfc_preprocessor import RFCPreprocessor
 from Strategies.RFCStrategy import RFCStrategy
 from alpaca_trade_api import TimeFrame
-from Utils.logger_config import configure_logger
+from Utils.logger_config import configure_logger, shared_log_stream
 
-logger = configure_logger("Backtest")
+logger = configure_logger("Backtest", shared_log_stream)
 
 alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
 
@@ -42,7 +42,6 @@ def backtest(ticker): # backtest function for an individual stock
     # Evaluate the model performance during training
     try:
         evaluation_metrics = rfc_trainer.evaluate(rfc_trainer.model)
-        logger.info(f"Training set evaluation metrics: {evaluation_metrics}")
     except Exception as e:
         logger.error(f"Error evaluating model: {str(e)}")
     

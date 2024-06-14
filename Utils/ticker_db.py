@@ -4,9 +4,9 @@ import yfinance as yf
 from Utils.data_processing import backtest
 import plotly.graph_objects as go
 from Pages.UI.figures import generate_figure_for_ticker
-from Utils.logger_config import configure_logger
+from Utils.logger_config import configure_logger, shared_log_stream
 
-logger = configure_logger('Database')
+logger = configure_logger('Database', shared_log_stream)
 
 # "Database" for holding ticker data
 DB_NAME = "ticker_data"
@@ -18,7 +18,6 @@ def add_ticker(ticker):
         figure, data = generate_figure_and_data_for_ticker(ticker)
         with shelve.open(DB_NAME) as db:
             db[ticker] = {'figure': figure, 'data': data}
-            logger.info(f"Stored data for {ticker}: {db[ticker]}")
     except Exception as e:
         logger.error(f"Error adding {ticker} to the database: {str(e)}") 
     else:

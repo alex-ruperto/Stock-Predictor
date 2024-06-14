@@ -1,22 +1,34 @@
 # imports
 import logging
+from io import StringIO
+
+# create a sharde log stream for the entire application
+shared_log_stream = StringIO()
 
 # set up a centralized logger configuration across the entire system
-def configure_logger(name: str) -> logging.Logger:
+def configure_logger(name: str, log_stream: StringIO = None) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO) # set the logging level to include info
 
-    # console handler setup
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-
     # formatter setup
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    # add formatter to the console handler and add the console handler to the logger
-    ch.setFormatter(formatter)
 
-    if not logger.handlers:
+    # console logger setup
+    if not logger.hasHandlers():
+        
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        ch.setFormatter(formatter)
         logger.addHandler(ch)
     
+        # add handler for StringIO if provided
+        if log_stream is not None:
+            stream_handler = logging.StreamHandler(log_stream)
+            stream_handler.setLevel(logging.INFO)
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
+
     return logger
+
+# initialize a shared logger once
+configure_logger("Global", shared_log_stream)

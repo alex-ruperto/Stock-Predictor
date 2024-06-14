@@ -6,20 +6,11 @@ from Utils.ticker_db import add_ticker, remove_ticker, get_all_tickers
 import Utils.ticker_db as ticker_db
 from io import StringIO
 import logging
+from Utils.logger_config import configure_logger, shared_log_stream
 
-# setup logging and StringIO
-log_stream = StringIO()
-logging.basicConfig(
-    level=logging.INFO, # all messages (Info, Warning, Error, and Critical) will be logged
-    format='Time: %(asctime)s  \nLevel: %(levelname)s \n%(message)s \n',
-    # %(asctime)s = current time when the log message is generated. e.g., ‘2003-07-08 16:49:45,896’ 
-    # (the numbers after the comma are millisecond portion of the time).
-    # %(levelname)s = the text logging level, whether it's DEBUG, INFO, WARNING, ERROR, or CRITICAL
-    # %(message)s = the logged message
-    handlers=[logging.StreamHandler(log_stream)] # write logging records to a stream
-)
 
-logger = logging.getLogger()
+# setup logging and shared log stream
+logger = configure_logger("Ticker Page", shared_log_stream)
 
 dash.register_page(
     __name__, 
@@ -87,11 +78,9 @@ def update_db(n_intervals, add_click, remove_click, display_click, clear_click, 
 
         if button_id == 'add-ticker-button' and ticker_value:
             ticker_db.add_ticker(ticker_value)
-            logger.info(f"Added {ticker_value}")
 
         elif button_id == 'remove-ticker-button' and ticker_value:
             ticker_db.remove_ticker(ticker_value)
-            logger.info(f"Removed {ticker_value}")
 
         elif button_id == 'display-tickers-button':
             all_tickers = ticker_db.get_all_tickers()
@@ -99,15 +88,15 @@ def update_db(n_intervals, add_click, remove_click, display_click, clear_click, 
                 logger.info(f"Ticker: {ticker}")
 
         elif button_id == 'clear-log-button':
-            log_stream.truncate(0) # clear the log stream
-            log_stream.seek(0) # reset stream position
+            shared_log_stream.truncate(0) # clear the log stream
+            shared_log_stream.seek(0) # reset stream position
             return "" # clear the text area
 
     # get current log messages
-    log_stream.seek(0)
-    log_contents = log_stream.read()
-    log_stream.truncate(0) # clear the log stream after reading it
-    log_stream.seek(0) # reset stream position
+    shared_log_stream.seek(0)
+    log_contents = shared_log_stream.read()
+    shared_log_stream.truncate(0) # clear the log stream after reading it
+    shared_log_stream.seek(0) # reset stream position
 
     updated_log = current_log + log_contents
 
