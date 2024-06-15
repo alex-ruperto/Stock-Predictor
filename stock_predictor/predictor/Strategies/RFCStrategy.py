@@ -1,5 +1,5 @@
 import backtrader as bt
-from Strategies.BaseStrategy import BaseStrategy
+from .BaseStrategy import BaseStrategy
 import pandas as pd
 from collections import deque
 import torch

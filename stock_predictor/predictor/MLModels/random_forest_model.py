@@ -7,8 +7,8 @@ import pandas_ta
 import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
-from Models.base_model import ModelTrainer
-from Utils.logger_config import configure_logger, shared_log_stream
+from .base_model import ModelTrainer
+from ..Utils.logger_config import configure_logger, shared_log_stream
 
 class RandomForestTrainer(ModelTrainer):
     def __init__(self):
