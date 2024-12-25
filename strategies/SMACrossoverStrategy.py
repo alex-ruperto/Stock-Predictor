@@ -1,5 +1,5 @@
 import backtrader as bt
-from Strategies.BaseStrategy import BaseStrategy
+from strategies.BaseStrategy import BaseStrategy
 
 class SMACrossoverStrategy(BaseStrategy):  # class definition with BaseStrategy as the parent
     # these two periods will refer to how many days the moving average will be calculated.

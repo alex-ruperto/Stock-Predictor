@@ -2,12 +2,12 @@ import unittest
 import yfinance as yf 
 import pandas as pd
 import numpy as np
-from Models.random_forest_model import RandomForestTrainer
-from Preprocessors.rfc_preprocessor import RFCPreprocessor
-from Utils.data_processing import backtest
+from ml.random_forest_trainer import RandomForestTrainer
+from preprocessors.rfc_preprocessor import RFCPreprocessor
+from utils.data_processing import backtest
 from unittest.mock import patch
 from datetime import datetime, timedelta
-# TODO write a unit test for random_forest_model.py
+# TODO write a unit test for random_forest_trainer.py
 
 class TestRFCModel(unittest.TestCase):
     @classmethod
@@ -27,7 +27,7 @@ class TestRFCModel(unittest.TestCase):
         self.assertIn("target", preprocessed_data.columns)
         self.assertFalse(preprocessed_data.isnull().values.any())
     
-    @patch('Utils.logger_config.configure_logger')  # Patch the logger configuration function
+    @patch('utils.logger_config.configure_logger')  # Patch the logger configuration function
     def test_model_training(self, mock_logger):  # Add the mock_logger argument
         # Test Random Forest training
         preprocessor = RFCPreprocessor()

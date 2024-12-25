@@ -1,5 +1,6 @@
 *.log
 temp/
+.venv/
 venv/
 Pipfile/
 Pipfile.lock/
