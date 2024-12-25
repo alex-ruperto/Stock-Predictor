@@ -1,7 +1,7 @@
 import pandas as pd
 import pandas_ta as ta
-from Preprocessors.base_preprocessor import DataPreprocessor
-from Utils.logger_config import configure_logger, shared_log_stream
+from preprocessors.base_preprocessor import DataPreprocessor
+from utils.logger_config import configure_logger, shared_log_stream
 
 class RFCPreprocessor(DataPreprocessor):
     def __init__(self):
