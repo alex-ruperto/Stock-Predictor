@@ -16,3 +16,5 @@ trading-bot-env/
 config.py
 alpacaconfig.py
 ticker_data.db
+.DS_Store
+.vscode/
