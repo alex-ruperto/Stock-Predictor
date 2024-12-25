@@ -1,20 +1,19 @@
 # imports
 import backtrader as bt
 import alpaca_trade_api as tradeapi
-import Utils.alpacaconfig as config
+import alpacaconfig as config
 import pandas as pd
 import logging
-from Models.random_forest_model import RandomForestTrainer
 from Preprocessors.rfc_preprocessor import RFCPreprocessor
 from Strategies.RFCStrategy import RFCStrategy
-from alpaca_trade_api import TimeFrame
 from Utils.logger_config import configure_logger, shared_log_stream
+from alpaca_trade_api import TimeFrame
 
-logger = configure_logger("Backtest", shared_log_stream)
-
-alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
 
 def backtest(ticker): # backtest function for an individual stock
+    logger = configure_logger("Backtest", shared_log_stream)
+    alpaca_api = tradeapi.REST(config.ALPACA_KEY, config.ALPACA_SECRET_KEY, base_url=config.APCA_API_BASE_URL)
+
     logger.info("Collecting stock data...")
     # get data from alpaca
     stock_data = alpaca_api.get_bars(ticker, TimeFrame.Hour, start="2022-01-01", end="2023-01-01").df
@@ -35,6 +34,9 @@ def backtest(ticker): # backtest function for an individual stock
     cerebro.adddata(data_feed)
     cerebro.broker.set_cash(100)
 
+    # Import the RandomForestTrainer here
+    from Models.random_forest_model import RandomForestTrainer
+    
     # Train model and add strategy to Cerebro
     rfc_trainer = RandomForestTrainer()
     rfc_trainer.train(preprocessed_data, 'target')
