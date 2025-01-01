@@ -1,9 +1,10 @@
 import alpaca_trade_api as tradeapi
 import alpacaconfig as config
+import pandas as pd
 from alpaca_trade_api import TimeFrame
 
 
-def fetch_stock_data(selected_ticker, start_date, end_date, timeframe):
+def fetch_stock_data(selected_ticker: str, start_date: str, end_date: str, timeframe:str) -> pd.DataFrame:
     """
         Fetch stock data for a given ticker from Alpaca.
 
