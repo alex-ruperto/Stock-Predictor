@@ -7,7 +7,7 @@ from utils.logger_config import configure_logger, shared_log_stream
 from utils.fetch_data import fetch_stock_data
 
 
-def backtest(ticker): # backtest function for an individual stock
+def backtest(ticker: str): # backtest function for an individual stock
     logger = configure_logger("Backtest", shared_log_stream)
 
     logger.info("Collecting stock data...")
