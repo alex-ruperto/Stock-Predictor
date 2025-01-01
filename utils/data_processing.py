@@ -4,7 +4,7 @@ import logging
 from preprocessors.rfc_preprocessor import RFCPreprocessor
 from strategies.RFCStrategy import RFCStrategy
 from utils.logger_config import configure_logger, shared_log_stream
-from utils.fetch_data import fetch_data
+from utils.fetch_data import fetch_stock_data
 
 
 def backtest(ticker): # backtest function for an individual stock
@@ -12,7 +12,7 @@ def backtest(ticker): # backtest function for an individual stock
 
     logger.info("Collecting stock data...")
     # get data from alpaca
-    stock_data = fetch_data(ticker, start_date="2022-01-01", end_date="2023-01-01", timeframe="Hour")
+    stock_data = fetch_stock_data(ticker, start_date="2022-01-01", end_date="2023-01-01", timeframe="Hour")
 
     # Prepare data for backtrader
     stock_data.columns = [col.lower() for col in stock_data.columns]  # Ensure column names are in lowercase
